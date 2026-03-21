@@ -39,6 +39,7 @@ import {
 } from '@curious/shared';
 import { separateCircles } from './collision';
 import type { Circle } from './collision';
+import { createSpatialGrid, clearGrid, insertEntity, getNearbyEntities } from './spatial-grid';
 import { tickEnemyAI } from './enemy-ai';
 import { tickCasterAI } from './caster-ai';
 import { tickDasherAI } from './dasher-ai';
@@ -281,33 +282,48 @@ export function tickWorld(world: SimWorld, dt: number): void {
 
 type Collidable = { position: Vec2; radius: number };
 
+const collisionGrid = createSpatialGrid();
+
+/** Max search radius for nearby entity queries (covers the largest entity radius) */
+const COLLISION_SEARCH_RADIUS = BOSS_RADIUS * 3;
+
 function resolveCollisions(world: SimWorld): void {
-  // Gather all collidable entities
-  const entities: { obj: Collidable; isStatic: boolean }[] = [];
+  clearGrid(collisionGrid);
+
+  // Build entity map and insert into spatial grid
+  const entityMap = new Map<string, { obj: Collidable; isStatic: boolean }>();
 
   for (const p of world.players.values()) {
-    if (p.state !== 'dead' && p.state !== 'dying') entities.push({ obj: { position: p.position, radius: PLAYER_RADIUS }, isStatic: false });
+    if (p.state !== 'dead' && p.state !== 'dying') {
+      insertEntity(collisionGrid, p.id, p.position);
+      entityMap.set(p.id, { obj: { position: p.position, radius: PLAYER_RADIUS }, isStatic: false });
+    }
   }
   for (const e of world.enemies.values()) {
-    if (e.aiState !== 'dead' && e.aiState !== 'dying') entities.push({ obj: { position: e.position, radius: ENEMY_RADIUS }, isStatic: false });
+    if (e.aiState !== 'dead' && e.aiState !== 'dying') {
+      insertEntity(collisionGrid, e.id, e.position);
+      entityMap.set(e.id, { obj: { position: e.position, radius: ENEMY_RADIUS }, isStatic: false });
+    }
   }
   if (world.boss && world.boss.aiState !== 'dead' && world.boss.aiState !== 'dying') {
-    // Boss is static during slam sequence — only players/enemies get pushed out
     const bossStatic = world.boss.aiState === 'jumping' || world.boss.aiState === 'slamming' || world.boss.aiState === 'recovering';
-    entities.push({ obj: { position: world.boss.position, radius: BOSS_RADIUS }, isStatic: bossStatic });
+    insertEntity(collisionGrid, world.boss.id, world.boss.position);
+    entityMap.set(world.boss.id, { obj: { position: world.boss.position, radius: BOSS_RADIUS }, isStatic: bossStatic });
   }
 
-  // O(n^2) pairwise — fine for small entity counts
-  for (let i = 0; i < entities.length; i++) {
-    for (let j = i + 1; j < entities.length; j++) {
-      const a = entities[i];
-      const b = entities[j];
+  // For each entity, check only nearby entities from the spatial grid
+  for (const [id, a] of entityMap) {
+    const nearbyIds = getNearbyEntities(collisionGrid, a.obj.position, COLLISION_SEARCH_RADIUS);
+    for (const nearId of nearbyIds) {
+      if (nearId <= id) continue; // Avoid duplicate pairs (string comparison)
+      const b = entityMap.get(nearId);
+      if (!b) continue;
+
       const result = separateCircles(
         { position: a.obj.position, radius: a.obj.radius },
         { position: b.obj.position, radius: b.obj.radius }
       );
       if (result) {
-        // Static entities don't move — their share goes to the other
         if (a.isStatic && b.isStatic) continue;
         if (a.isStatic) {
           b.obj.position = vec2Add(b.obj.position, vec2Add(result.pushB, vec2Scale(result.pushA, -1)));

@@ -10,7 +10,7 @@ import {
   ENEMY_SEPARATION_RADIUS, ENEMY_SEPARATION_FORCE,
 } from '@curious/shared';
 import type { SimWorld } from './simulation';
-import { getSpeedMultiplier } from './buffs';
+import { getSpeedMultiplier, checkBlockShield } from './buffs';
 
 export function tickBomberAI(enemy: EnemySnapshot, world: SimWorld, dt: number): GameEvent[] {
   const events: GameEvent[] = [];
@@ -91,21 +91,24 @@ export function tickBomberAI(enemy: EnemySnapshot, world: SimWorld, dt: number):
           if (player.iFrameTimer > 0) continue;
           const dist = vec2Distance(enemy.position, player.position);
           if (dist < BOMBER_EXPLODE_RADIUS + PLAYER_RADIUS) {
-            const damage = Math.round(BOMBER_EXPLODE_DAMAGE * enemy.damageMultiplier);
-            player.health -= damage;
-            player.hitFlashTimer = HIT_FLASH_DURATION;
-            player.iFrameTimer = IFRAME_DURATION;
+            const rawDamage = Math.round(BOMBER_EXPLODE_DAMAGE * enemy.damageMultiplier);
+            const { actualDamage: damage } = checkBlockShield(player.buffs, rawDamage, player.id, events);
+            if (damage > 0) {
+              player.health -= damage;
+              player.hitFlashTimer = HIT_FLASH_DURATION;
+              player.iFrameTimer = IFRAME_DURATION;
 
-            // Knockback away from explosion
-            const dir = vec2Normalize(vec2Sub(player.position, enemy.position));
-            const strength = KNOCKBACK_SLAM * (1 - dist / BOMBER_EXPLODE_RADIUS);
-            player.knockbackVelocity = vec2Scale(dir, Math.max(strength, KNOCKBACK_SLAM * 0.3));
+              // Knockback away from explosion
+              const dir = vec2Normalize(vec2Sub(player.position, enemy.position));
+              const strength = KNOCKBACK_SLAM * (1 - dist / BOMBER_EXPLODE_RADIUS);
+              player.knockbackVelocity = vec2Scale(dir, Math.max(strength, KNOCKBACK_SLAM * 0.3));
 
-            events.push({ type: 'DAMAGE_TAKEN', entityId: player.id, amount: damage, newHealth: player.health });
-            if (player.health <= 0) {
-              player.health = 0;
-              player.state = 'dying';
-              events.push({ type: 'ENTITY_DIED', entityId: player.id, entityType: 'player' });
+              events.push({ type: 'DAMAGE_TAKEN', entityId: player.id, amount: damage, newHealth: player.health });
+              if (player.health <= 0) {
+                player.health = 0;
+                player.state = 'dying';
+                events.push({ type: 'ENTITY_DIED', entityId: player.id, entityType: 'player' });
+              }
             }
           }
         }

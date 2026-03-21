@@ -97,6 +97,13 @@ type SparkInstance = {
   born: number;
 };
 
+// Pre-allocated per-burst buffers (reused across bursts to avoid heap churn)
+const _burstPositions = new Float32Array(SPARK_COUNT * 3);
+const _burstVelocities = new Float32Array(SPARK_COUNT * 3);
+const _burstSizes = new Float32Array(SPARK_COUNT);
+const _burstStretches = new Float32Array(SPARK_COUNT);
+const _burstGrounded = new Uint8Array(SPARK_COUNT);
+
 export function HitSparks() {
   const instances = useRef<SparkInstance[]>([]);
   const meshRef = useRef<THREE.Points>(null);
@@ -136,35 +143,31 @@ export function HitSparks() {
 
     // ── Spawn new bursts ─────────────────────────────────
     for (const spark of sparks) {
-      const positions = new Float32Array(SPARK_COUNT * 3);
-      const velocities = new Float32Array(SPARK_COUNT * 3);
-      const sizes = new Float32Array(SPARK_COUNT);
-      const stretches = new Float32Array(SPARK_COUNT);
-      const grounded = new Uint8Array(SPARK_COUNT);
-
+      // Fill pre-allocated scratch buffers
       for (let i = 0; i < SPARK_COUNT; i++) {
-        // Start at impact point, mid-body height
-        positions[i * 3] = spark.x;
-        positions[i * 3 + 1] = SPAWN_Y;
-        positions[i * 3 + 2] = spark.z;
+        _burstPositions[i * 3] = spark.x;
+        _burstPositions[i * 3 + 1] = SPAWN_Y;
+        _burstPositions[i * 3 + 2] = spark.z;
 
-        // Radial horizontal direction — omnidirectional burst
         const angle = Math.random() * Math.PI * 2;
         const horizSpeed = HORIZ_SPEED_MIN + Math.random() * (HORIZ_SPEED_MAX - HORIZ_SPEED_MIN);
-        velocities[i * 3] = Math.cos(angle) * horizSpeed;
-        velocities[i * 3 + 2] = Math.sin(angle) * horizSpeed;
+        _burstVelocities[i * 3] = Math.cos(angle) * horizSpeed;
+        _burstVelocities[i * 3 + 2] = Math.sin(angle) * horizSpeed;
+        _burstVelocities[i * 3 + 1] = UP_SPEED_MIN + Math.random() * (UP_SPEED_MAX - UP_SPEED_MIN);
 
-        // Upward launch — varied so some pop higher, some stay low
-        velocities[i * 3 + 1] = UP_SPEED_MIN + Math.random() * (UP_SPEED_MAX - UP_SPEED_MIN);
-
-        // Random size per particle
-        sizes[i] = SPARK_SIZE_MIN + Math.random() * (SPARK_SIZE_MAX - SPARK_SIZE_MIN);
-
-        // Some particles are elongated streaks
-        stretches[i] = Math.random() < STRETCH_CHANCE
+        _burstSizes[i] = SPARK_SIZE_MIN + Math.random() * (SPARK_SIZE_MAX - SPARK_SIZE_MIN);
+        _burstStretches[i] = Math.random() < STRETCH_CHANCE
           ? STRETCH_MIN + Math.random() * (STRETCH_MAX - STRETCH_MIN)
           : 1.0;
+        _burstGrounded[i] = 0;
       }
+
+      // Copy scratch into owned arrays for this burst instance
+      const positions = new Float32Array(_burstPositions);
+      const velocities = new Float32Array(_burstVelocities);
+      const sizes = new Float32Array(_burstSizes);
+      const stretches = new Float32Array(_burstStretches);
+      const grounded = new Uint8Array(_burstGrounded);
 
       instances.current.push({ spark, positions, velocities, sizes, stretches, grounded, born: now });
     }

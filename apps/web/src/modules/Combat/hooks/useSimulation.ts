@@ -18,6 +18,7 @@ import {
   getSpeedMultiplier,
   tryCastSpell,
   rollCritical,
+  getThornsReflect,
 } from '@curious/game-logic';
 import {
   PLAYER_SPEED,
@@ -30,8 +31,10 @@ import {
 import { vec2Length, vec2Sub, vec2Angle, vec2Normalize, randomizeDamage } from '@curious/shared';
 import { isKeyDown } from '@/input/keyboard';
 import { getSimWorld } from '@modules/Combat/hooks/world-manager';
-import { initAudio } from '@modules/Audio/audio-engine';
+import { initAudio, applyVolumeSettings } from '@modules/Audio/audio-engine';
 import { processAudioEvents } from '@modules/Audio/game-audio';
+import { useAchievementStore } from '@lib/stores/achievement-store';
+import { useSettingsStore } from '@lib/stores/settings-store';
 
 /** Runs the simulation tick every frame during combat. */
 export function useSimulation() {
@@ -43,6 +46,8 @@ export function useSimulation() {
   // Multiplayer broadcast throttle
   const broadcastCounter = useRef(0);
   const escWasDown = useRef(false);
+  // Achievement check throttle (~1 second at 60fps)
+  const achievementCheckCounter = useRef(0);
 
   useFrame((_, delta) => {
     // Toggle settings on Escape key edge
@@ -60,6 +65,10 @@ export function useSimulation() {
       useGameStore.getState().setHitstopTimer(Math.max(0, hitstop - delta));
       return;
     }
+
+    // Apply audio settings every frame (negligible cost — single property set)
+    const settings = useSettingsStore.getState();
+    applyVolumeSettings(settings.masterVolume, settings.muted);
 
     const world = getSimWorld();
     const dt = Math.min(delta, 0.05);
@@ -177,6 +186,22 @@ export function useSimulation() {
               const damage = Math.round(baseDamage * crit.multiplier);
               const events = applyHitToEnemy(enemy, damage, player.position);
               world.events.push(...events);
+              // Elite: thorns reflect damage back to player
+              const thornsDmg = getThornsReflect(enemy, damage);
+              if (thornsDmg > 0) {
+                player.health -= thornsDmg;
+                world.events.push({
+                  type: 'DAMAGE_TAKEN',
+                  entityId: player.id,
+                  amount: thornsDmg,
+                  newHealth: player.health,
+                });
+                if (player.health <= 0) {
+                  player.health = 0;
+                  player.state = 'dying';
+                  world.events.push({ type: 'ENTITY_DIED', entityId: player.id, entityType: 'player' });
+                }
+              }
               store.addHitSpark(enemy.position.x, enemy.position.z);
               store.addDamageNumber(enemy.position.x, enemy.position.z, damage, crit.isCrit);
               if (crit.isCrit) anyCrit = true;
@@ -215,6 +240,44 @@ export function useSimulation() {
       }
     }
 
+    // --- Multiplayer: host processes remote player inputs ---
+    const mpState = useMultiplayerStore.getState();
+    if (mpState.connected && mpState.isHost) {
+      const remoteInputs = mpState.consumeRemoteInputs();
+      for (const ri of remoteInputs) {
+        const remotePlayer = world.players.get(ri.playerId);
+        if (!remotePlayer || remotePlayer.state !== 'alive') continue;
+
+        remotePlayer.isMoving = vec2Length(ri.moveDir) > 0.01;
+
+        if (remotePlayer.stunTimer <= 0) {
+          if (ri.dash && vec2Length(ri.moveDir) > 0.01) {
+            tryStartDash(remotePlayer, ri.moveDir);
+          }
+          if (remotePlayer.dashTimer > 0) {
+            applyPlayerMovement(remotePlayer, remotePlayer.dashDirection, DASH_SPEED, dt);
+          } else {
+            const baseSpeed = remotePlayer.attackState
+              ? PLAYER_SPEED * PLAYER_ATTACK_SPEED_MULTIPLIER
+              : PLAYER_SPEED;
+            const speed = baseSpeed * getSpeedMultiplier(remotePlayer.buffs);
+            applyPlayerMovement(remotePlayer, ri.moveDir, speed, dt);
+          }
+          setPlayerRotation(remotePlayer, ri.aimAngle);
+
+          if (ri.attacking && remotePlayer.dashTimer <= 0) {
+            tryStartAttack(remotePlayer, world.time);
+          }
+          if (ri.spellSlot !== null) {
+            const dir = { x: Math.sin(ri.aimAngle), z: Math.cos(ri.aimAngle) };
+            const spellEvents = tryCastSpell(remotePlayer, ri.spellSlot, dir, world);
+            world.events.push(...spellEvents);
+          }
+        }
+        tickAttack(remotePlayer, dt, world.time);
+      }
+    }
+
     tickWorld(world, dt);
 
     // Ensure audio context is initialized (requires prior user gesture)
@@ -245,6 +308,12 @@ export function useSimulation() {
     statsStore.updateTimeSurvived(dt);
     for (const event of world.events) {
       statsStore.processEvent(event);
+    }
+
+    // Check achievements every ~1 second (60 frames) to avoid spam
+    if (achievementCheckCounter.current++ >= 60) {
+      achievementCheckCounter.current = 0;
+      useAchievementStore.getState().checkAchievements(statsStore.currentStats);
     }
 
     // Check if local player death animation finished

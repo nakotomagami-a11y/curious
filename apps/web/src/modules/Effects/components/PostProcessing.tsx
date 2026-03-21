@@ -8,8 +8,13 @@ import {
   N8AO,
   SMAA,
 } from "@react-three/postprocessing";
+import { useSettingsStore } from '@lib/stores/settings-store';
 
 export function PostProcessing() {
+  const postProcessingEnabled = useSettingsStore((s) => s.postProcessing);
+
+  if (!postProcessingEnabled) return null;
+
   return (
     <>
       <Environment

@@ -24,7 +24,7 @@ import {
   KNOCKBACK_SWORD,
 } from '@curious/shared';
 import type { SimWorld } from './simulation';
-import { applyBuff } from './buffs';
+import { applyBuff, checkBlockShield } from './buffs';
 
 export function createProjectile(
   id: EntityId,
@@ -105,7 +105,20 @@ function checkEnemyProjectileHits(
 
     const dist = vec2Distance(proj.position, player.position);
     if (dist < proj.radius + PLAYER_RADIUS) {
-      player.health -= proj.damage;
+      // Block shield absorbs damage
+      const { actualDamage } = checkBlockShield(player.buffs, proj.damage, player.id, events);
+
+      events.push({
+        type: 'PROJECTILE_HIT',
+        projectileId: proj.id,
+        targetId: player.id,
+        damage: actualDamage,
+        position: { ...proj.position },
+      });
+
+      if (actualDamage <= 0) return true; // Fully absorbed
+
+      player.health -= actualDamage;
       player.hitFlashTimer = HIT_FLASH_DURATION;
       player.iFrameTimer = IFRAME_DURATION;
 
@@ -113,16 +126,9 @@ function checkEnemyProjectileHits(
       player.knockbackVelocity = vec2Scale(knockDir, PROJECTILE_KNOCKBACK);
 
       events.push({
-        type: 'PROJECTILE_HIT',
-        projectileId: proj.id,
-        targetId: player.id,
-        damage: proj.damage,
-        position: { ...proj.position },
-      });
-      events.push({
         type: 'DAMAGE_TAKEN',
         entityId: player.id,
-        amount: proj.damage,
+        amount: actualDamage,
         newHealth: player.health,
       });
 

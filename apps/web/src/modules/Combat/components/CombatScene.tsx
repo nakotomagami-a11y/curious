@@ -17,6 +17,7 @@ import { FootstepDust } from "@modules/Effects/components/FootstepDust";
 import { SpellDropRig } from "@modules/Effects/components/SpellDropRig";
 import { ZoneRig } from "@modules/Effects/components/ZoneRig";
 import { useGameStore } from "@lib/stores/game-store";
+import { useSettingsStore } from "@lib/stores/settings-store";
 import { useTargeting } from "@modules/Combat/hooks/useTargeting";
 import type { PlayerSnapshot } from "@curious/shared";
 
@@ -48,6 +49,11 @@ export function CombatScene() {
   const zones = useGameStore((s) => s.zones);
   const boss = useGameStore((s) => s.boss);
 
+  // Shadow quality from settings
+  const shadowQuality = useSettingsStore((s) => s.shadowQuality);
+  const shadowMapSize = shadowQuality === 'high' ? 2048 : shadowQuality === 'low' ? 512 : 0;
+  const castShadow = shadowQuality !== 'off';
+
   // Magnetic cursor + enemy selection
   useTargeting();
 
@@ -59,9 +65,9 @@ export function CombatScene() {
         position={[200, 500, -200]}
         intensity={0.9}
         color="#fff0dd"
-        castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
+        castShadow={castShadow}
+        shadow-mapSize-width={shadowMapSize}
+        shadow-mapSize-height={shadowMapSize}
         shadow-camera-left={-600}
         shadow-camera-right={600}
         shadow-camera-top={600}

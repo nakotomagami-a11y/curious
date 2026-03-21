@@ -4,4 +4,6 @@ dist/
 *.tsbuildinfo
 .env
 .env.local
+.env*.local
 out/
+supabase/.temp/

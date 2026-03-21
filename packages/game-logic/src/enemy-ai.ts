@@ -30,6 +30,8 @@ import {
   ARENA_HALF_HEIGHT,
 } from '@curious/shared';
 import type { SimWorld } from './simulation';
+import { getVampiricHeal } from './elite';
+import { checkBlockShield } from './buffs';
 
 const ENEMY_ROTATION_SPEED = 8;
 const PUNCH_HIT_PROGRESS = 0.5; // check hit at 50% through punch
@@ -225,7 +227,12 @@ function applyPunchToPlayer(
 
   const events: GameEvent[] = [];
 
-  const damage = Math.round(ENEMY_PUNCH_DAMAGE * enemy.damageMultiplier);
+  const rawDamage = Math.round(ENEMY_PUNCH_DAMAGE * enemy.damageMultiplier);
+
+  // Block shield absorbs damage
+  const { actualDamage: damage, reflectDamage } = checkBlockShield(player.buffs, rawDamage, player.id, events);
+  if (damage <= 0) return events; // Fully absorbed
+
   player.health -= damage;
   player.hitFlashTimer = HIT_FLASH_DURATION;
   player.iFrameTimer = IFRAME_DURATION;
@@ -249,6 +256,12 @@ function applyPunchToPlayer(
       entityId: player.id,
       entityType: 'player',
     });
+  }
+
+  // Elite: vampiric heals enemy after dealing damage
+  const vampHeal = getVampiricHeal(enemy, damage);
+  if (vampHeal > 0) {
+    enemy.health = Math.min(enemy.maxHealth, enemy.health + vampHeal);
   }
 
   return events;

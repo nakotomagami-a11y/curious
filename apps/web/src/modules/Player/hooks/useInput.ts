@@ -3,6 +3,7 @@ import { useThree, useFrame } from '@react-three/fiber';
 import { useInputStore } from '@lib/stores/input-store';
 import { useAppStore } from '@lib/stores/app-store';
 import { initKeyboard, readMoveDir, clearKeys } from '@/input/keyboard';
+import { pollGamepad, getGamepadState, isGamepadConnected } from '@/input/gamepad';
 import { projectMouseToGround } from '@/input/mouse';
 import { vec2Angle, vec2Sub, vec2Length } from '@curious/shared';
 
@@ -73,8 +74,20 @@ export function useInput() {
 
     const inputStore = useInputStore.getState();
 
+    // Poll gamepad state
+    pollGamepad();
+
     // WASD
-    const moveDir = readMoveDir();
+    let moveDir = readMoveDir();
+
+    // Override moveDir with gamepad left stick if significant
+    if (isGamepadConnected()) {
+      const gp = getGamepadState();
+      if (Math.abs(gp.leftStick.x) > 0.01 || Math.abs(gp.leftStick.z) > 0.01) {
+        moveDir = gp.leftStick;
+      }
+    }
+
     inputStore.setMoveDir(moveDir);
 
     // Mouse → ground projection → aim angle

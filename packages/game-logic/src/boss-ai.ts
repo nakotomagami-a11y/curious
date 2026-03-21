@@ -33,6 +33,7 @@ import type { SimWorld } from './simulation';
 import { updateBossPhase, getBossSpeedMultiplier, getBossDamageMultiplier } from './boss-phases';
 import { tickHydraAI } from './hydra-ai';
 import { tickMageBossAI } from './mage-boss-ai';
+import { checkBlockShield } from './buffs';
 
 const BOSS_ROTATION_SPEED = 6;
 
@@ -214,7 +215,7 @@ function tickTelegraphing(
   if (boss.slamProgress >= 1) {
     boss.slamProgress = 0;
     // Store jump origin for lerp
-    (boss as any)._jumpOrigin = { ...boss.position };
+    boss.jumpOrigin = { ...boss.position };
     boss.aiState = 'jumping';
   }
 
@@ -225,7 +226,7 @@ function tickJumping(boss: BossSnapshot, dt: number): void {
   boss.slamProgress += dt / BOSS_JUMP_DURATION;
 
   if (boss.slamTargetPosition) {
-    const origin = (boss as any)._jumpOrigin ?? boss.position;
+    const origin = boss.jumpOrigin ?? boss.position;
     const t = Math.min(boss.slamProgress, 1);
     boss.position = vec2Lerp(origin, boss.slamTargetPosition, t);
   }
@@ -255,7 +256,7 @@ function tickSlamming(boss: BossSnapshot, world: SimWorld): GameEvent[] {
   boss.slamCooldownTimer = BOSS_SLAM_COOLDOWN;
   boss.slamProgress = 0;
   boss.slamTargetPosition = null;
-  delete (boss as any)._jumpOrigin;
+  boss.jumpOrigin = undefined;
   boss.aiState = 'recovering';
 
   return events;
@@ -284,7 +285,11 @@ function applyBossSlamToPlayer(
 
   const events: GameEvent[] = [];
 
-  player.health -= BOSS_SLAM_DAMAGE;
+  // Block shield absorbs damage
+  const { actualDamage: slamDamage } = checkBlockShield(player.buffs, BOSS_SLAM_DAMAGE, player.id, events);
+  if (slamDamage <= 0) return events; // Fully absorbed
+
+  player.health -= slamDamage;
   player.hitFlashTimer = HIT_FLASH_DURATION;
   player.iFrameTimer = IFRAME_DURATION;
 
@@ -303,7 +308,7 @@ function applyBossSlamToPlayer(
   events.push({
     type: 'DAMAGE_TAKEN',
     entityId: player.id,
-    amount: BOSS_SLAM_DAMAGE,
+    amount: slamDamage,
     newHealth: player.health,
   });
 

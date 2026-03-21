@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useDeathActions } from '@modules/Combat/hooks/useDeathActions';
 import { useStatsStore } from '@lib/stores/stats-store';
 import { useAppStore } from '@lib/stores/app-store';
+import { useAchievementStore } from '@lib/stores/achievement-store';
 import { LeaderboardPanel } from './LeaderboardPanel';
 
 function formatTime(seconds: number): string {
@@ -28,7 +29,13 @@ export function DeathStatsScreen() {
   const stats = useStatsStore((s) => s.currentStats);
   const getScore = useStatsStore((s) => s.getScore);
   const resetStats = useStatsStore((s) => s.resetStats);
+  const checkAchievements = useAchievementStore((s) => s.checkAchievements);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+
+  // Check achievements on mount with final combat stats
+  useEffect(() => {
+    checkAchievements(stats);
+  }, []);
 
   const score = Math.round(getScore());
 

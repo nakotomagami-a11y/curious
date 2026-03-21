@@ -33,6 +33,13 @@ export function setMasterVolume(v: number): void {
   if (masterGain) masterGain.gain.value = Math.max(0, Math.min(1, v));
 }
 
+/** Apply volume settings from the settings store (master + mute). */
+export function applyVolumeSettings(master: number, muted: boolean): void {
+  if (masterGain) {
+    masterGain.gain.value = muted ? 0 : Math.max(0, Math.min(1, master));
+  }
+}
+
 /** Create a white noise buffer. */
 export function createNoiseBuffer(duration: number): AudioBuffer | null {
   if (!ctx) return null;

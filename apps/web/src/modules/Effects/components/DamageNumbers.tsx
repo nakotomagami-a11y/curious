@@ -6,7 +6,7 @@ import { useGameStore } from '@lib/stores/game-store';
 import { assetUrl } from '@lib/utils/asset-url';
 
 // ── Pool ─────────────────────────────────────────────────
-const POOL_SIZE = 16;
+const POOL_SIZE = 32;
 
 // ── Animation ────────────────────────────────────────────
 const LIFETIME = 0.8;             // seconds before fully faded

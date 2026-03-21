@@ -167,6 +167,8 @@ export type BossSnapshot = {
   respawnTimer: number;
   slamCooldownTimer: number;
   targetId: EntityId | null;
+  /** Stored jump origin for lerping boss position during jump */
+  jumpOrigin?: Vec2;
 };
 
 // --- Input ---

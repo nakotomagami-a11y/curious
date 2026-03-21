@@ -10,7 +10,8 @@ import {
   ENEMY_SEPARATION_RADIUS, ENEMY_SEPARATION_FORCE,
 } from '@curious/shared';
 import type { SimWorld } from './simulation';
-import { getSpeedMultiplier } from './buffs';
+import { getSpeedMultiplier, checkBlockShield } from './buffs';
+import { getVampiricHeal } from './elite';
 
 export function tickShielderAI(enemy: EnemySnapshot, world: SimWorld, dt: number): GameEvent[] {
   const events: GameEvent[] = [];
@@ -88,17 +89,25 @@ export function tickShielderAI(enemy: EnemySnapshot, world: SimWorld, dt: number
         if (target && target.state === 'alive' && target.iFrameTimer <= 0) {
           const dist = vec2Distance(enemy.position, target.position);
           if (dist < SHIELDER_ATTACK_RANGE + PLAYER_RADIUS + ENEMY_RADIUS + 10) {
-            const damage = Math.round(SHIELDER_PUNCH_DAMAGE * enemy.damageMultiplier);
-            target.health -= damage;
-            target.hitFlashTimer = HIT_FLASH_DURATION;
-            target.iFrameTimer = IFRAME_DURATION;
-            const dir = vec2Normalize(vec2Sub(target.position, enemy.position));
-            target.knockbackVelocity = vec2Scale(dir, KNOCKBACK_PUNCH);
-            events.push({ type: 'DAMAGE_TAKEN', entityId: target.id, amount: damage, newHealth: target.health });
-            if (target.health <= 0) {
-              target.health = 0;
-              target.state = 'dying';
-              events.push({ type: 'ENTITY_DIED', entityId: target.id, entityType: 'player' });
+            const rawDamage = Math.round(SHIELDER_PUNCH_DAMAGE * enemy.damageMultiplier);
+            const { actualDamage: damage } = checkBlockShield(target.buffs, rawDamage, target.id, events);
+            if (damage > 0) {
+              target.health -= damage;
+              target.hitFlashTimer = HIT_FLASH_DURATION;
+              target.iFrameTimer = IFRAME_DURATION;
+              const dir = vec2Normalize(vec2Sub(target.position, enemy.position));
+              target.knockbackVelocity = vec2Scale(dir, KNOCKBACK_PUNCH);
+              events.push({ type: 'DAMAGE_TAKEN', entityId: target.id, amount: damage, newHealth: target.health });
+              if (target.health <= 0) {
+                target.health = 0;
+                target.state = 'dying';
+                events.push({ type: 'ENTITY_DIED', entityId: target.id, entityType: 'player' });
+              }
+              // Elite: vampiric heals enemy after dealing damage
+              const vampHeal = getVampiricHeal(enemy, damage);
+              if (vampHeal > 0) {
+                enemy.health = Math.min(enemy.maxHealth, enemy.health + vampHeal);
+              }
             }
           }
         }

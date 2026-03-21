@@ -1,5 +1,6 @@
-import { useRef } from 'react';
+import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
+import * as THREE from 'three';
 import type { Mesh } from 'three';
 import type { ZoneSnapshot } from '@curious/shared';
 
@@ -8,6 +9,12 @@ export function ZoneRig({ snapshot }: { snapshot: ZoneSnapshot }) {
   const innerRef = useRef<Mesh>(null);
 
   const { zoneType, radius } = snapshot;
+
+  // Memoize geometries to avoid re-creating on every mount/render
+  const sphereGeo = useMemo(() => new THREE.SphereGeometry(radius, 24, 16), [radius]);
+  const sphereInnerGeo = useMemo(() => new THREE.SphereGeometry(radius * 0.98, 24, 16), [radius]);
+  const ringGeo = useMemo(() => new THREE.RingGeometry(radius * 0.9, radius, 48), [radius]);
+  const circleGeo = useMemo(() => new THREE.CircleGeometry(radius * 0.9, 48), [radius]);
 
   const color = zoneType === 'heal' ? '#44dd66'
     : zoneType === 'shield_bubble' ? '#4488ff'
@@ -39,8 +46,7 @@ export function ZoneRig({ snapshot }: { snapshot: ZoneSnapshot }) {
   if (zoneType === 'shield_bubble') {
     return (
       <group position={[snapshot.position.x, 0, snapshot.position.z]}>
-        <mesh ref={ringRef}>
-          <sphereGeometry args={[radius, 24, 16]} />
+        <mesh ref={ringRef} geometry={sphereGeo}>
           <meshStandardMaterial
             color={color}
             emissive={emissive}
@@ -50,8 +56,7 @@ export function ZoneRig({ snapshot }: { snapshot: ZoneSnapshot }) {
             wireframe
           />
         </mesh>
-        <mesh ref={innerRef}>
-          <sphereGeometry args={[radius * 0.98, 24, 16]} />
+        <mesh ref={innerRef} geometry={sphereInnerGeo}>
           <meshStandardMaterial
             color={color}
             transparent
@@ -66,14 +71,12 @@ export function ZoneRig({ snapshot }: { snapshot: ZoneSnapshot }) {
   return (
     <group position={[snapshot.position.x, 0.5, snapshot.position.z]}>
       {/* Outer ring */}
-      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[radius * 0.9, radius, 48]} />
+      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} geometry={ringGeo}>
         <meshBasicMaterial color={color} transparent opacity={0.2} />
       </mesh>
 
       {/* Inner fill */}
-      <mesh ref={innerRef} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[radius * 0.9, 48]} />
+      <mesh ref={innerRef} rotation={[-Math.PI / 2, 0, 0]} geometry={circleGeo}>
         <meshBasicMaterial color={color} transparent opacity={0.08} />
       </mesh>
 

@@ -35,6 +35,7 @@ import {
   ARENA_HALF_HEIGHT,
 } from '@curious/shared';
 import type { SimWorld } from './simulation';
+import { checkBlockShield } from './buffs';
 
 const DASHER_ROTATION_SPEED = 8;
 
@@ -231,31 +232,34 @@ function tickDashing(
 
     const dist = vec2Distance(enemy.position, player.position);
     if (dist < ENEMY_RADIUS + PLAYER_RADIUS) {
-      const dmg = Math.round(DASHER_DASH_DAMAGE * enemy.damageMultiplier);
-      player.health -= dmg;
-      player.hitFlashTimer = HIT_FLASH_DURATION;
-      player.iFrameTimer = IFRAME_DURATION;
-      player.stunTimer = STUN_DURATION;
+      const rawDmg = Math.round(DASHER_DASH_DAMAGE * enemy.damageMultiplier);
+      const { actualDamage: dmg } = checkBlockShield(player.buffs, rawDmg, player.id, events);
+      if (dmg > 0) {
+        player.health -= dmg;
+        player.hitFlashTimer = HIT_FLASH_DURATION;
+        player.iFrameTimer = IFRAME_DURATION;
+        player.stunTimer = STUN_DURATION;
 
-      const knockDir = vec2Normalize(enemy.dashDirection);
-      player.knockbackVelocity = vec2Scale(knockDir, KNOCKBACK_DASHER);
+        const knockDir = vec2Normalize(enemy.dashDirection);
+        player.knockbackVelocity = vec2Scale(knockDir, KNOCKBACK_DASHER);
 
-      events.push({
-        type: 'DAMAGE_TAKEN',
-        entityId: player.id,
-        amount: dmg,
-        newHealth: player.health,
-      });
-      events.push({
-        type: 'PLAYER_STUNNED',
-        playerId: player.id,
-        duration: STUN_DURATION,
-      });
+        events.push({
+          type: 'DAMAGE_TAKEN',
+          entityId: player.id,
+          amount: dmg,
+          newHealth: player.health,
+        });
+        events.push({
+          type: 'PLAYER_STUNNED',
+          playerId: player.id,
+          duration: STUN_DURATION,
+        });
 
-      if (player.health <= 0) {
-        player.health = 0;
-        player.state = 'dying';
-        events.push({ type: 'ENTITY_DIED', entityId: player.id, entityType: 'player' });
+        if (player.health <= 0) {
+          player.health = 0;
+          player.state = 'dying';
+          events.push({ type: 'ENTITY_DIED', entityId: player.id, entityType: 'player' });
+        }
       }
     }
   }

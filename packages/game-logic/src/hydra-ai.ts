@@ -11,6 +11,7 @@ import {
 } from '@curious/shared';
 import type { SimWorld } from './simulation';
 import { getBossSpeedMultiplier, getBossDamageMultiplier, updateBossPhase } from './boss-phases';
+import { checkBlockShield } from './buffs';
 
 const HYDRA_ROTATION_SPEED = 4;
 
@@ -59,7 +60,7 @@ export function tickHydraAI(boss: BossSnapshot, world: SimWorld, dt: number): Ga
       // Multi-head bite attack — each head attacks independently
       // Use slamCooldownTimer for attack timing
       if (dist < HYDRA_BITE_RANGE && boss.slamCooldownTimer <= 0) {
-        boss.aiState = 'attacking' as any; // Hydra uses 'attacking' state via cast
+        boss.aiState = 'telegraphing';
         boss.slamProgress = 0;
       }
       break;
@@ -87,13 +88,16 @@ export function tickHydraAI(boss: BossSnapshot, world: SimWorld, dt: number): Ga
         if (dist > HYDRA_BITE_RANGE + PLAYER_RADIUS) continue;
 
         for (let h = 0; h < hitCount; h++) {
-          player.health -= damage;
+          const { actualDamage: biteDmg } = checkBlockShield(player.buffs, damage, player.id, events);
+          if (biteDmg <= 0) continue; // Fully absorbed
+
+          player.health -= biteDmg;
           player.hitFlashTimer = HIT_FLASH_DURATION;
           player.iFrameTimer = IFRAME_DURATION;
           const dir = vec2Normalize(vec2Sub(player.position, boss.position));
           player.knockbackVelocity = vec2Scale(dir, KNOCKBACK_PUNCH * 1.5);
 
-          events.push({ type: 'DAMAGE_TAKEN', entityId: player.id, amount: damage, newHealth: player.health });
+          events.push({ type: 'DAMAGE_TAKEN', entityId: player.id, amount: biteDmg, newHealth: player.health });
           if (player.health <= 0) {
             player.health = 0;
             player.state = 'dying';

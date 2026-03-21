@@ -31,6 +31,7 @@ import {
   vec2FromAngle,
   angleDifference,
 } from '@curious/shared';
+import { getEliteDamageReduction } from './elite';
 
 /** Try to start an attack. Returns true if attack started. */
 export function tryStartAttack(
@@ -129,7 +130,11 @@ export function applyHitToEnemy(
 
   const events: GameEvent[] = [];
 
-  enemy.health -= damage;
+  // Elite: shielded reduces frontal damage
+  const damageReduction = getEliteDamageReduction(enemy, attackerPos);
+  const actualDamage = Math.round(damage * damageReduction);
+
+  enemy.health -= actualDamage;
   enemy.hitFlashTimer = HIT_FLASH_DURATION;
   enemy.iFrameTimer = IFRAME_DURATION;
 
@@ -140,7 +145,7 @@ export function applyHitToEnemy(
   events.push({
     type: 'DAMAGE_TAKEN',
     entityId: enemy.id,
-    amount: damage,
+    amount: actualDamage,
     newHealth: enemy.health,
   });
 

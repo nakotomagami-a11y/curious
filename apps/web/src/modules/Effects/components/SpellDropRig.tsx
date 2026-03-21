@@ -1,5 +1,6 @@
-import { useRef } from 'react';
+import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
+import * as THREE from 'three';
 import type { Mesh } from 'three';
 import type { SpellDropSnapshot, SpellId } from '@curious/shared';
 
@@ -20,6 +21,9 @@ export function SpellDropRig({ snapshot }: { snapshot: SpellDropSnapshot }) {
   const glowRef = useRef<Mesh>(null);
   const color = getSpellDropColor(snapshot.spellId);
 
+  const ringGeo = useMemo(() => new THREE.RingGeometry(14, 20, 24), []);
+  const orbGeo = useMemo(() => new THREE.DodecahedronGeometry(6, 0), []);
+
   useFrame(({ clock }) => {
     if (!meshRef.current) return;
     const t = clock.elapsedTime;
@@ -38,14 +42,12 @@ export function SpellDropRig({ snapshot }: { snapshot: SpellDropSnapshot }) {
   return (
     <group position={[snapshot.position.x, 0, snapshot.position.z]}>
       {/* Glow ring on ground */}
-      <mesh ref={glowRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.5, 0]}>
-        <ringGeometry args={[14, 20, 24]} />
+      <mesh ref={glowRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.5, 0]} geometry={ringGeo}>
         <meshBasicMaterial color={color} transparent opacity={0.3} />
       </mesh>
 
       {/* Floating orb */}
-      <mesh ref={meshRef} position={[0, 12, 0]}>
-        <dodecahedronGeometry args={[6, 0]} />
+      <mesh ref={meshRef} position={[0, 12, 0]} geometry={orbGeo}>
         <meshStandardMaterial
           color={color}
           emissive={color}
