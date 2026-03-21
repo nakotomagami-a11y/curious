@@ -399,23 +399,25 @@ function tryGenerate(roomCount: number): DungeonLayout | null {
   const corridors = new Map<string, Corridor>();
   const allDoors = new Map<string, Door>();
 
-  // Make a copy of occupiedTiles for corridor routing (rooms are occupied, corridors grow)
-  const corridorOccupied = new Set<string>(occupiedTiles);
+  // Corridor routing: track corridor-only tiles separately.
+  // Corridors can overlap with room tiles (connecting to rooms) but not other corridors.
+  const roomTileSet = new Set<string>(occupiedTiles); // snapshot of room tiles only
+  const corridorOnlyTiles = new Set<string>(); // only corridor tiles
 
   for (const [iA, iB] of edgeList) {
     const roomA = placedRooms[iA];
     const roomB = placedRooms[iB];
 
-    const result = generateCorridor(roomA, roomB, corridorOccupied, TILE_SIZE);
+    const result = generateCorridor(roomA, roomB, corridorOnlyTiles, TILE_SIZE, roomTileSet);
     if (result) {
       const { corridor, doors } = result;
       corridors.set(corridor.id, corridor);
 
-      // Add corridor tiles to occupied
+      // Add corridor tiles to both tracking sets
       for (const tr of corridor.tileRects) {
         for (let c = tr.col; c < tr.col + tr.width; c++) {
           for (let r = tr.row; r < tr.row + tr.height; r++) {
-            corridorOccupied.add(tileKey(c, r));
+            corridorOnlyTiles.add(tileKey(c, r));
             occupiedTiles.add(tileKey(c, r));
           }
         }

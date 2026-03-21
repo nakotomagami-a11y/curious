@@ -58,11 +58,23 @@ function findClosestEdges(
   return best;
 }
 
-/** Check if a corridor segment overlaps occupied tiles. */
-function segmentClear(rect: TileRect, occupied: Set<string>): boolean {
+/**
+ * Check if a corridor segment can be placed.
+ * Allows overlap with room tiles at boundaries (corridors connect TO rooms)
+ * but rejects overlap with other corridor tiles.
+ */
+function segmentClear(
+  rect: TileRect,
+  occupied: Set<string>,
+  roomTiles?: Set<string>,
+): boolean {
   for (let c = rect.col; c < rect.col + rect.width; c++) {
     for (let r = rect.row; r < rect.row + rect.height; r++) {
-      if (occupied.has(tileKey(c, r))) return false;
+      if (occupied.has(tileKey(c, r))) {
+        // Allow overlap with room tiles (corridor connecting to room)
+        if (roomTiles && roomTiles.has(tileKey(c, r))) continue;
+        return false;
+      }
     }
   }
   return true;
@@ -84,6 +96,7 @@ function tryStraight(
   end: { col: number; row: number },
   horizontal: boolean,
   occupied: Set<string>,
+  roomTiles?: Set<string>,
 ): TileRect[] | null {
   if (horizontal && start.row === end.row) {
     const minC = Math.min(start.col, end.col);
@@ -94,7 +107,7 @@ function tryStraight(
       width: maxC - minC + 1,
       height: CORRIDOR_WIDTH,
     };
-    if (segmentClear(rect, occupied)) return [rect];
+    if (segmentClear(rect, occupied, roomTiles)) return [rect];
   } else if (!horizontal && start.col === end.col) {
     const minR = Math.min(start.row, end.row);
     const maxR = Math.max(start.row, end.row);
@@ -104,7 +117,7 @@ function tryStraight(
       width: CORRIDOR_WIDTH,
       height: maxR - minR + 1,
     };
-    if (segmentClear(rect, occupied)) return [rect];
+    if (segmentClear(rect, occupied, roomTiles)) return [rect];
   }
   return null;
 }
@@ -115,55 +128,30 @@ function tryLBend(
   end: { col: number; row: number },
   occupied: Set<string>,
   variant: 0 | 1,
+  roomTiles?: Set<string>,
 ): TileRect[] | null {
   const hw = Math.floor(CORRIDOR_WIDTH / 2);
 
-  // variant 0: go horizontal first, then vertical
-  // variant 1: go vertical first, then horizontal
   if (variant === 0) {
     const midCol = end.col;
-    // Horizontal segment from start to midCol
     const hMinC = Math.min(start.col, midCol);
     const hMaxC = Math.max(start.col, midCol);
-    const hRect: TileRect = {
-      col: hMinC,
-      row: start.row - hw,
-      width: hMaxC - hMinC + 1,
-      height: CORRIDOR_WIDTH,
-    };
-    // Vertical segment from start.row to end.row at midCol
+    const hRect: TileRect = { col: hMinC, row: start.row - hw, width: hMaxC - hMinC + 1, height: CORRIDOR_WIDTH };
     const vMinR = Math.min(start.row, end.row);
     const vMaxR = Math.max(start.row, end.row);
-    const vRect: TileRect = {
-      col: midCol - hw,
-      row: vMinR,
-      width: CORRIDOR_WIDTH,
-      height: vMaxR - vMinR + 1,
-    };
-    if (segmentClear(hRect, occupied) && segmentClear(vRect, occupied)) {
+    const vRect: TileRect = { col: midCol - hw, row: vMinR, width: CORRIDOR_WIDTH, height: vMaxR - vMinR + 1 };
+    if (segmentClear(hRect, occupied, roomTiles) && segmentClear(vRect, occupied, roomTiles)) {
       return [hRect, vRect];
     }
   } else {
     const midRow = end.row;
-    // Vertical segment from start to midRow
     const vMinR = Math.min(start.row, midRow);
     const vMaxR = Math.max(start.row, midRow);
-    const vRect: TileRect = {
-      col: start.col - hw,
-      row: vMinR,
-      width: CORRIDOR_WIDTH,
-      height: vMaxR - vMinR + 1,
-    };
-    // Horizontal segment from start.col to end.col at midRow
+    const vRect: TileRect = { col: start.col - hw, row: vMinR, width: CORRIDOR_WIDTH, height: vMaxR - vMinR + 1 };
     const hMinC = Math.min(start.col, end.col);
     const hMaxC = Math.max(start.col, end.col);
-    const hRect: TileRect = {
-      col: hMinC,
-      row: midRow - hw,
-      width: hMaxC - hMinC + 1,
-      height: CORRIDOR_WIDTH,
-    };
-    if (segmentClear(vRect, occupied) && segmentClear(hRect, occupied)) {
+    const hRect: TileRect = { col: hMinC, row: midRow - hw, width: hMaxC - hMinC + 1, height: CORRIDOR_WIDTH };
+    if (segmentClear(vRect, occupied, roomTiles) && segmentClear(hRect, occupied, roomTiles)) {
       return [vRect, hRect];
     }
   }
@@ -175,6 +163,7 @@ function tryZBend(
   start: { col: number; row: number },
   end: { col: number; row: number },
   occupied: Set<string>,
+  roomTiles?: Set<string>,
 ): TileRect[] | null {
   const hw = Math.floor(CORRIDOR_WIDTH / 2);
   const midCol = Math.floor((start.col + end.col) / 2);
@@ -200,7 +189,7 @@ function tryZBend(
     height: CORRIDOR_WIDTH,
   };
 
-  if (segmentClear(h1, occupied) && segmentClear(v, occupied) && segmentClear(h2, occupied)) {
+  if (segmentClear(h1, occupied, roomTiles) && segmentClear(v, occupied, roomTiles) && segmentClear(h2, occupied, roomTiles)) {
     return [h1, v, h2];
   }
 
@@ -224,7 +213,7 @@ function tryZBend(
     height: Math.abs(end.row - midRow) + 1,
   };
 
-  if (segmentClear(v1, occupied) && segmentClear(h, occupied) && segmentClear(v2, occupied)) {
+  if (segmentClear(v1, occupied, roomTiles) && segmentClear(h, occupied, roomTiles) && segmentClear(v2, occupied, roomTiles)) {
     return [v1, h, v2];
   }
 
@@ -296,6 +285,7 @@ export function generateCorridor(
   roomB: DungeonRoom,
   occupiedTiles: Set<string>,
   tileSize: number,
+  roomTiles?: Set<string>,
 ): { corridor: Corridor; doors: Door[] } | null {
   const edgesA = getRoomEdges(roomA);
   const edgesB = getRoomEdges(roomB);
@@ -310,10 +300,10 @@ export function generateCorridor(
 
   // Try routing strategies in order
   const strategies: (() => TileRect[] | null)[] = [
-    () => tryStraight(startPt, endPt, isHorizontal, occupiedTiles),
-    () => tryLBend(startPt, endPt, occupiedTiles, 0),
-    () => tryLBend(startPt, endPt, occupiedTiles, 1),
-    () => tryZBend(startPt, endPt, occupiedTiles),
+    () => tryStraight(startPt, endPt, isHorizontal, occupiedTiles, roomTiles),
+    () => tryLBend(startPt, endPt, occupiedTiles, 0, roomTiles),
+    () => tryLBend(startPt, endPt, occupiedTiles, 1, roomTiles),
+    () => tryZBend(startPt, endPt, occupiedTiles, roomTiles),
   ];
 
   for (const strategy of strategies) {
