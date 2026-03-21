@@ -141,7 +141,7 @@ function tickChasing(enemy: EnemySnapshot, world: SimWorld, dt: number): void {
     if (distToHome > 5) {
       // Walk back home
       const dir = vec2Normalize(vec2Sub(enemy.leashOrigin, enemy.position));
-      enemy.position = vec2Add(enemy.position, vec2Scale(dir, ENEMY_SPEED * dt));
+      enemy.position = vec2Add(enemy.position, vec2Scale(dir, ENEMY_SPEED * enemy.speedMultiplier * dt));
       faceToward(enemy, enemy.leashOrigin, dt);
     } else {
       enemy.aiState = 'idle';
@@ -162,7 +162,7 @@ function tickChasing(enemy: EnemySnapshot, world: SimWorld, dt: number): void {
   // Move toward target, but STOP at desired combat distance
   if (dist > ENEMY_DESIRED_DISTANCE) {
     const dir = vec2Normalize(vec2Sub(target.position, enemy.position));
-    enemy.position = vec2Add(enemy.position, vec2Scale(dir, ENEMY_SPEED * dt));
+    enemy.position = vec2Add(enemy.position, vec2Scale(dir, ENEMY_SPEED * enemy.speedMultiplier * dt));
   }
 
   // Separation from other enemies — prevent stacking
@@ -225,7 +225,8 @@ function applyPunchToPlayer(
 
   const events: GameEvent[] = [];
 
-  player.health -= ENEMY_PUNCH_DAMAGE;
+  const damage = Math.round(ENEMY_PUNCH_DAMAGE * enemy.damageMultiplier);
+  player.health -= damage;
   player.hitFlashTimer = HIT_FLASH_DURATION;
   player.iFrameTimer = IFRAME_DURATION;
 
@@ -236,7 +237,7 @@ function applyPunchToPlayer(
   events.push({
     type: 'DAMAGE_TAKEN',
     entityId: player.id,
-    amount: ENEMY_PUNCH_DAMAGE,
+    amount: damage,
     newHealth: player.health,
   });
 

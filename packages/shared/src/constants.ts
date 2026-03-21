@@ -12,6 +12,17 @@ export const PLAYER_HEALTH_REGEN_RATE = 2; // per second
 export const PLAYER_ROTATION_SPEED = 12; // lerp factor
 export const PLAYER_ATTACK_SPEED_MULTIPLIER = 1 / 1.4; // speed reduction while attacking
 
+// --- Stamina ---
+export const PLAYER_MAX_STAMINA = 100;
+export const STAMINA_REGEN_RATE = 6.67; // per second while moving (full in ~15s)
+export const STAMINA_REGEN_RATE_IDLE = 10; // per second standing still (full in 10s)
+export const STAMINA_COST_DASH = 20;
+export const STAMINA_COST_ATTACK = 10;
+
+// --- Mana ---
+export const PLAYER_MAX_MANA = 100;
+export const MANA_REGEN_RATE = 3; // per second
+
 // --- Sword ---
 export const SWORD_DAMAGE = 25;
 export const SWORD_REACH = 60;
@@ -23,6 +34,9 @@ export const COMBO_RESET_TIME = 1.5; // seconds idle before combo resets
 
 // --- i-frames ---
 export const IFRAME_DURATION = 0.3; // seconds of invulnerability after hit
+
+// --- Stun ---
+export const STUN_DURATION = 0.5; // seconds
 
 // --- Enemy ---
 export const ENEMY_SPEED = 150;
@@ -39,6 +53,65 @@ export const ENEMY_ACTIVE_COUNT = 6; // spawner maintains this many
 export const ENEMY_DESIRED_DISTANCE = 80; // stop this far from player center
 export const ENEMY_SEPARATION_RADIUS = 70; // repel enemies within this distance of each other
 export const ENEMY_SEPARATION_FORCE = 100; // units/sec push away from other enemies
+
+// --- Caster Enemy ---
+export const CASTER_SPEED = 120;
+export const CASTER_MAX_HEALTH = 50;
+export const CASTER_ATTACK_RANGE = 350;
+export const CASTER_ATTACK_COOLDOWN = 2.0;
+export const CASTER_CAST_DURATION = 0.6;
+export const CASTER_DESIRED_DISTANCE = 300;
+export const CASTER_FLEE_DISTANCE = 150;
+export const CASTER_AGGRO_RANGE = 600;
+export const CASTER_LEASH_RANGE = 800;
+export const CASTER_SPAWN_CHANCE = 0.3;
+
+// --- Dasher Enemy ---
+export const DASHER_SPEED = 140;
+export const DASHER_MAX_HEALTH = 60;
+export const DASHER_AGGRO_RANGE = 550;
+export const DASHER_LEASH_RANGE = 750;
+export const DASHER_TELEGRAPH_DURATION = 0.8;
+export const DASHER_DASH_SPEED = 900;
+export const DASHER_DASH_DURATION = 0.25;
+export const DASHER_DASH_DAMAGE = 15;
+export const DASHER_RECOVERY_DURATION = 1.0;
+export const DASHER_ATTACK_COOLDOWN = 3.0;
+export const DASHER_DESIRED_DISTANCE = 200;
+export const DASHER_ATTACK_RANGE = 400;
+export const DASHER_SPAWN_CHANCE = 0.15;
+
+// --- Projectile ---
+export const PROJECTILE_SPEED = 400;
+export const PROJECTILE_RADIUS = 10;
+export const PROJECTILE_DAMAGE = 8;
+export const PROJECTILE_LIFETIME = 3.0;
+export const PROJECTILE_KNOCKBACK = 60;
+
+// --- Spells ---
+export const FIREBALL_MANA_COST = 25;
+export const FIREBALL_COOLDOWN = 4.0;
+export const FIREBALL_SPEED = 500;
+export const FIREBALL_RADIUS = 15;
+export const FIREBALL_DAMAGE = 20;
+export const FIREBALL_LIFETIME = 4.0;
+export const FIREBALL_KNOCKBACK = 100;
+
+// --- Buffs/Debuffs ---
+export const SPEED_BOOST_MULTIPLIER = 1.5;
+export const SPEED_BOOST_DURATION = 2.0;
+export const BURN_DPS = 3;
+export const BURN_DURATION = 3.0;
+export const BURN_TICK_INTERVAL = 0.5;
+
+// --- Survival Mode ---
+export const SURVIVAL_BASE_ENEMY_COUNT = 4;
+export const SURVIVAL_ENEMY_INCREMENT = 2;
+export const SURVIVAL_MEGA_BOSS_WAVE = 5;
+export const SURVIVAL_MEGA_BOSS_HEALTH = 600;
+export const WAVE_HEALTH_SCALE = 0.15;
+export const WAVE_SPEED_SCALE = 0.08;
+export const WAVE_DAMAGE_SCALE = 0.10;
 
 // --- Boss ---
 export const BOSS_SCALE = 1.5;
@@ -59,6 +132,7 @@ export const BOSS_RESPAWN_DELAY = 10; // seconds
 export const KNOCKBACK_SWORD = 80;
 export const KNOCKBACK_PUNCH = 40;
 export const KNOCKBACK_SLAM = 800;
+export const KNOCKBACK_DASHER = 200;
 export const KNOCKBACK_DECAY = 0.85;
 export const KNOCKBACK_MIN_THRESHOLD = 0.1;
 
@@ -79,7 +153,7 @@ export const HIT_FLASH_DURATION = 0.15; // seconds
 // --- Dash ---
 export const DASH_SPEED = 630; // units/sec (~2.1x PLAYER_SPEED)
 export const DASH_DURATION = 0.15; // seconds — very short burst
-export const DASH_COOLDOWN = 2.0; // seconds between dashes
+export const DASH_COOLDOWN = 4.0; // seconds between dashes
 
 // --- Damage ---
 export const DAMAGE_VARIANCE = 0.2; // ±20% of base damage

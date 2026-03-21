@@ -3,11 +3,13 @@ export type Vec2 = { x: number; z: number };
 export type EntityId = string;
 
 // --- App State ---
-export type AppScene = 'booting' | 'landing' | 'joining' | 'combat' | 'dead';
+export type AppScene = 'booting' | 'landing' | 'mode-select' | 'joining' | 'combat' | 'dead';
+export type GameMode = 'dev-playground' | 'survival';
 
 // --- Entity States ---
 export type PlayerState = 'alive' | 'dying' | 'dead';
-export type EnemyAIState = 'idle' | 'chasing' | 'attacking' | 'dying' | 'dead';
+export type EnemyType = 'melee' | 'caster' | 'dasher';
+export type EnemyAIState = 'idle' | 'chasing' | 'attacking' | 'telegraphing' | 'dashing' | 'recovering' | 'dying' | 'dead';
 export type BossAIState =
   | 'idle'
   | 'chasing'
@@ -17,6 +19,18 @@ export type BossAIState =
   | 'recovering'
   | 'dying'
   | 'dead';
+
+// --- Buffs ---
+export type BuffType = 'SPEED_BOOST' | 'BURN';
+export type BuffInstance = {
+  type: BuffType;
+  duration: number;
+  tickTimer: number;
+};
+
+// --- Spells ---
+export type SpellId = 'fireball';
+export type ProjectileOwnerType = 'enemy' | 'player';
 
 // --- Attack ---
 export type AttackState = {
@@ -33,11 +47,17 @@ export type PlayerSnapshot = {
   rotation: number;
   health: number;
   maxHealth: number;
+  mana: number;
+  maxMana: number;
+  stamina: number;
+  maxStamina: number;
+  isMoving: boolean;
   state: PlayerState;
   attackState: AttackState | null;
   knockbackVelocity: Vec2;
   hitFlashTimer: number;
   iFrameTimer: number;
+  stunTimer: number;
   lastAttackTime: number;
   lastComboIndex: number;
   swordDamage: number;
@@ -46,10 +66,15 @@ export type PlayerSnapshot = {
   dashTimer: number;
   dashCooldownTimer: number;
   dashDirection: Vec2;
+  buffs: BuffInstance[];
+  spellCooldowns: Partial<Record<SpellId, number>>;
+  castingSpell: SpellId | null;
+  castProgress: number;
 };
 
 export type EnemySnapshot = {
   id: EntityId;
+  enemyType: EnemyType;
   position: Vec2;
   rotation: number;
   health: number;
@@ -63,6 +88,26 @@ export type EnemySnapshot = {
   leashOrigin: Vec2;
   attackCooldownTimer: number;
   attackProgress: number;
+  speedMultiplier: number;
+  damageMultiplier: number;
+  buffs: BuffInstance[];
+  // Dasher-specific
+  dashDirection: Vec2;
+  dashTimer: number;
+  telegraphTimer: number;
+  recoveryTimer: number;
+};
+
+export type ProjectileSnapshot = {
+  id: EntityId;
+  ownerId: EntityId;
+  ownerType: ProjectileOwnerType;
+  position: Vec2;
+  velocity: Vec2;
+  radius: number;
+  damage: number;
+  lifetime: number;
+  isFireball: boolean;
 };
 
 export type BossSnapshot = {

@@ -127,6 +127,16 @@ export function LandingScene() {
               <span style={{ color: '#555', fontSize: '11px', marginTop: '4px', letterSpacing: '1px' }}>attack</span>
             </div>
 
+            {/* Spells */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <ControlKey label="1" />
+                <ControlKey label="2" />
+                <ControlKey label="3" />
+              </div>
+              <span style={{ color: '#555', fontSize: '11px', marginTop: '4px', letterSpacing: '1px' }}>spells</span>
+            </div>
+
             {/* LMB */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
               <MouseIcon />

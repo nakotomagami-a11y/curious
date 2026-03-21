@@ -1,10 +1,6 @@
 import { useState, useCallback, FormEvent } from 'react';
 import { useAppStore } from '@lib/stores/app-store';
-import { useGameStore } from '@lib/stores/game-store';
-import { createPlayer, createBoss, generateEntityId, resetSpawner } from '@curious/game-logic';
-import { vec2 } from '@curious/shared';
-import { getSimWorld, resetSimWorld } from '@modules/Combat/hooks/world-manager';
-import { initAudio, startAmbient } from '@modules/Audio/audio-engine';
+import { initAudio } from '@modules/Audio/audio-engine';
 import { playUiConfirm } from '@modules/Audio/sounds';
 
 const MIN_NAME_LENGTH = 1;
@@ -27,31 +23,11 @@ export function useLandingActions() {
       e.preventDefault();
       if (!canSubmit) return;
 
-      // Reset sim world for fresh session
-      resetSimWorld();
-      resetSpawner();
-      const world = getSimWorld();
-
-      // Spawn local player entity
-      const playerId = generateEntityId('player');
-      const player = createPlayer(playerId, sanitized);
-      world.players.set(playerId, player);
-
-      // Enemies are auto-spawned by the spawner in tickWorld
-
-      // Spawn boss
-      const boss = createBoss(generateEntityId('boss'), vec2(0, -250));
-      world.boss = boss;
-
-      // Start audio
       initAudio();
       playUiConfirm();
-      startAmbient();
 
-      // Update stores
       setPlayerName(sanitized);
-      useGameStore.getState().setLocalPlayerId(playerId);
-      setScene('combat');
+      setScene('mode-select');
     },
     [canSubmit, sanitized, setPlayerName, setScene]
   );

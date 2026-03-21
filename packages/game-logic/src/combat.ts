@@ -20,6 +20,7 @@ import {
   KNOCKBACK_SWORD,
   IFRAME_DURATION,
   HIT_FLASH_DURATION,
+  STAMINA_COST_ATTACK,
 } from '@curious/shared';
 import {
   vec2Sub,
@@ -36,9 +37,13 @@ export function tryStartAttack(
   player: PlayerSnapshot,
   worldTime: number
 ): boolean {
+  if (player.stamina < STAMINA_COST_ATTACK) return false;
+  if (player.stunTimer > 0) return false;
+
   // During hold phase (progress >= 1.0) — allow combo chain
   if (player.attackState !== null) {
     if (player.attackState.progress >= 1.0) {
+      player.stamina -= STAMINA_COST_ATTACK;
       const comboIndex = player.attackState.comboIndex === 0 ? 1 : 0;
       player.lastAttackTime = worldTime;
       player.lastComboIndex = player.attackState.comboIndex;
@@ -61,6 +66,7 @@ export function tryStartAttack(
     comboIndex = player.lastComboIndex === 0 ? 1 : 0;
   }
 
+  player.stamina -= STAMINA_COST_ATTACK;
   player.attackState = {
     comboIndex,
     progress: 0,

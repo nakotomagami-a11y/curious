@@ -1,8 +1,10 @@
-import type { EnemySnapshot, Vec2 } from '@curious/shared';
+import type { EnemySnapshot, EnemyType, Vec2 } from '@curious/shared';
 import { vec2, vec2Distance } from '@curious/shared';
 import {
   ENEMY_ACTIVE_COUNT,
   ENEMY_RESPAWN_DELAY,
+  CASTER_SPAWN_CHANCE,
+  DASHER_SPAWN_CHANCE,
   ARENA_HALF_WIDTH,
   ARENA_HALF_HEIGHT,
   PLAYER_RADIUS,
@@ -60,7 +62,11 @@ export function tickSpawner(world: SimWorld, dt: number): void {
   // Spawn new enemies if we don't have enough
   while (aliveCount < ENEMY_ACTIVE_COUNT && world.enemies.size < ENEMY_ACTIVE_COUNT) {
     const pos = findSpawnPosition(world);
-    const enemy = createEnemy(generateEntityId('enemy'), pos, pos);
+    const roll = Math.random();
+    const type: EnemyType = roll < DASHER_SPAWN_CHANCE ? 'dasher'
+      : roll < DASHER_SPAWN_CHANCE + CASTER_SPAWN_CHANCE ? 'caster'
+      : 'melee';
+    const enemy = createEnemy(generateEntityId('enemy'), pos, pos, type);
     world.enemies.set(enemy.id, enemy);
     aliveCount++;
   }
@@ -81,6 +87,11 @@ function respawnEnemy(enemy: EnemySnapshot, world: SimWorld): void {
   enemy.targetId = null;
   enemy.attackCooldownTimer = 0;
   enemy.attackProgress = 0;
+  enemy.buffs = [];
+  enemy.dashDirection = { x: 0, z: 0 };
+  enemy.dashTimer = 0;
+  enemy.telegraphTimer = 0;
+  enemy.recoveryTimer = 0;
 }
 
 /** Find a random spawn position away from all players. */

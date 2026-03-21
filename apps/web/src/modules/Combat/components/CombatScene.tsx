@@ -3,6 +3,7 @@ import { GroundPlane } from "@modules/World/components/GroundPlane";
 import { PlayerRig } from "@modules/Player/components/PlayerRig";
 import type { PlayerRigHandle } from "@modules/Player/components/PlayerRig";
 import { EnemyRig } from "@modules/Enemy/components/EnemyRig";
+import { ProjectileRig } from "@modules/Enemy/components/ProjectileRig";
 import { BossRig } from "@modules/Boss/components/BossRig";
 import { SlashArc } from "@modules/Effects/components/SlashArc";
 import { SwordSparks } from "@modules/Effects/components/SwordSparks";
@@ -11,6 +12,7 @@ import { HitSparks } from "@modules/Effects/components/HitSparks";
 import { DamageNumbers } from "@modules/Effects/components/DamageNumbers";
 import { SelectionIndicator } from "@modules/Effects/components/SelectionBrackets";
 import { PostProcessing } from "@modules/Effects/components/PostProcessing";
+import { DashVFX } from "@modules/Effects/components/DashVFX";
 import { useGameStore } from "@lib/stores/game-store";
 import { useTargeting } from "@modules/Combat/hooks/useTargeting";
 import type { PlayerSnapshot } from "@curious/shared";
@@ -28,6 +30,7 @@ function PlayerWithVFX({
       <PlayerRig ref={rigRef} snapshot={snapshot} isLocal={isLocal} />
       <SlashArc rigRef={rigRef} snapshot={snapshot} />
       <SwordSparks rigRef={rigRef} snapshot={snapshot} />
+      <DashVFX snapshot={snapshot} />
     </>
   );
 }
@@ -36,6 +39,7 @@ export function CombatScene() {
   const localPlayerId = useGameStore((s) => s.localPlayerId);
   const players = useGameStore((s) => s.players);
   const enemies = useGameStore((s) => s.enemies);
+  const projectiles = useGameStore((s) => s.projectiles);
   const boss = useGameStore((s) => s.boss);
 
   // Magnetic cursor + enemy selection
@@ -85,6 +89,11 @@ export function CombatScene() {
       {/* Render all enemies */}
       {Object.values(enemies).map((e) => (
         <EnemyRig key={e.id} snapshot={e} />
+      ))}
+
+      {/* Render projectiles */}
+      {Object.values(projectiles).map((p) => (
+        <ProjectileRig key={p.id} snapshot={p} />
       ))}
 
       {/* Render boss */}

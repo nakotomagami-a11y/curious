@@ -13,6 +13,8 @@ import {
   checkSlashHit,
   applyHitToEnemy,
   applyHitToBoss,
+  getSpeedMultiplier,
+  tryCastSpell,
 } from '@curious/game-logic';
 import {
   PLAYER_SPEED,
@@ -22,7 +24,7 @@ import {
   ENEMY_RADIUS,
   BOSS_RADIUS,
 } from '@curious/shared';
-import { vec2Length, vec2Sub, vec2Angle, randomizeDamage } from '@curious/shared';
+import { vec2Length, vec2Sub, vec2Angle, vec2Normalize, randomizeDamage } from '@curious/shared';
 import { isKeyDown } from '@/input/keyboard';
 import { getSimWorld } from '@modules/Combat/hooks/world-manager';
 import { initAudio } from '@modules/Audio/audio-engine';
@@ -33,6 +35,8 @@ export function useSimulation() {
   const scene = useAppStore((s) => s.scene);
   // Track which enemies have been hit during current attack to avoid multi-hits
   const hitThisAttack = useRef<Set<string>>(new Set());
+  // Spell key debouncing — fire on key-down edge only
+  const spellKeyState = useRef<boolean[]>([false, false, false]);
 
   useFrame((_, delta) => {
     if (scene !== 'combat') return;
@@ -53,59 +57,83 @@ export function useSimulation() {
     if (localPlayerId) {
       const player = world.players.get(localPlayerId);
       if (player && player.state === 'alive') {
-        // Dash: Shift + movement direction
-        if (isKeyDown('ShiftLeft') || isKeyDown('ShiftRight')) {
-          if (vec2Length(input.moveDir) > 0.01) {
-            tryStartDash(player, input.moveDir);
-          }
-        }
+        // Set isMoving for stamina regen rate
+        player.isMoving = vec2Length(input.moveDir) > 0.01;
 
-        // Movement — dash overrides normal movement
-        if (player.dashTimer > 0) {
-          applyPlayerMovement(player, player.dashDirection, DASH_SPEED, dt);
+        // Stun blocks all player actions
+        const isStunned = player.stunTimer > 0;
+
+        if (!isStunned) {
+          // Dash: Shift + movement direction
+          if (isKeyDown('ShiftLeft') || isKeyDown('ShiftRight')) {
+            if (vec2Length(input.moveDir) > 0.01) {
+              tryStartDash(player, input.moveDir);
+            }
+          }
+
+          // Movement — dash overrides normal movement
+          if (player.dashTimer > 0) {
+            applyPlayerMovement(player, player.dashDirection, DASH_SPEED, dt);
+          } else {
+            const baseSpeed = player.attackState
+              ? PLAYER_SPEED * PLAYER_ATTACK_SPEED_MULTIPLIER
+              : PLAYER_SPEED;
+            const speed = baseSpeed * getSpeedMultiplier(player.buffs);
+            applyPlayerMovement(player, input.moveDir, speed, dt);
+          }
+
+          // Rotation: face toward selected enemy, or mouse if none selected
+          let faceTarget = input.mouseWorldPos;
+          const selId = useGameStore.getState().selectedEnemyId;
+          if (selId) {
+            const selEnemy = world.enemies.get(selId);
+            const selBoss = world.boss?.id === selId ? world.boss : null;
+            const selTarget = selEnemy ?? selBoss;
+            if (selTarget && selTarget.aiState !== 'dying' && selTarget.aiState !== 'dead') {
+              faceTarget = selTarget.position;
+            }
+          }
+          const toTarget = vec2Sub(faceTarget, player.position);
+          if (vec2Length(toTarget) > 1) {
+            const desiredAngle = vec2Angle(toTarget);
+            // Smooth rotation — lerp via shortest arc
+            let diff = desiredAngle - player.rotation;
+            while (diff > Math.PI) diff -= 2 * Math.PI;
+            while (diff < -Math.PI) diff += 2 * Math.PI;
+            const smoothed = player.rotation + diff * Math.min(1, 18 * dt);
+            setPlayerRotation(player, smoothed);
+          }
+
+          // Attack: spacebar (blocked during dash)
+          if (isKeyDown('Space') && player.dashTimer <= 0) {
+            const started = tryStartAttack(player, world.time);
+            if (started) {
+              hitThisAttack.current.clear();
+              world.events.push({
+                type: 'ATTACK_START',
+                playerId: localPlayerId,
+                comboIndex: player.attackState!.comboIndex,
+              });
+            }
+          }
+
+          // Spell keys: 1, 2, 3
+          const aimDir = vec2Length(toTarget) > 1 ? vec2Normalize(toTarget) : { x: 0, z: 1 };
+          for (let slot = 0; slot < 3; slot++) {
+            const keyCode = `Digit${slot + 1}`;
+            const pressed = isKeyDown(keyCode);
+            if (pressed && !spellKeyState.current[slot]) {
+              const spellEvents = tryCastSpell(player, slot, aimDir, world);
+              world.events.push(...spellEvents);
+            }
+            spellKeyState.current[slot] = pressed;
+          }
         } else {
-          const speed = player.attackState
-            ? PLAYER_SPEED * PLAYER_ATTACK_SPEED_MULTIPLIER
-            : PLAYER_SPEED;
-          applyPlayerMovement(player, input.moveDir, speed, dt);
+          // Stunned: cancel attack, no voluntary actions
+          player.attackState = null;
         }
 
-        // Rotation: face toward selected enemy, or mouse if none selected
-        let faceTarget = input.mouseWorldPos;
-        const selId = useGameStore.getState().selectedEnemyId;
-        if (selId) {
-          const selEnemy = world.enemies.get(selId);
-          const selBoss = world.boss?.id === selId ? world.boss : null;
-          const selTarget = selEnemy ?? selBoss;
-          if (selTarget && selTarget.aiState !== 'dying' && selTarget.aiState !== 'dead') {
-            faceTarget = selTarget.position;
-          }
-        }
-        const toTarget = vec2Sub(faceTarget, player.position);
-        if (vec2Length(toTarget) > 1) {
-          const desiredAngle = vec2Angle(toTarget);
-          // Smooth rotation — lerp via shortest arc
-          let diff = desiredAngle - player.rotation;
-          while (diff > Math.PI) diff -= 2 * Math.PI;
-          while (diff < -Math.PI) diff += 2 * Math.PI;
-          const smoothed = player.rotation + diff * Math.min(1, 18 * dt);
-          setPlayerRotation(player, smoothed);
-        }
-
-        // Attack: spacebar (blocked during dash)
-        if (isKeyDown('Space') && player.dashTimer <= 0) {
-          const started = tryStartAttack(player, world.time);
-          if (started) {
-            hitThisAttack.current.clear();
-            world.events.push({
-              type: 'ATTACK_START',
-              playerId: localPlayerId,
-              comboIndex: player.attackState!.comboIndex,
-            });
-          }
-        }
-
-        // Tick attack progress
+        // Tick attack progress (always, even if stunned — lets swing finish)
         tickAttack(player, dt, world.time);
 
         // If attack ended, clear hit tracking
@@ -180,9 +208,15 @@ export function useSimulation() {
       if (event.type === 'BOSS_SLAM') {
         useGameStore.getState().setCameraShake(1.5); // heavy shake
       }
-      // Shake when local player takes damage (enemy punch)
+      // Shake when local player takes damage (enemy punch, projectile, burn)
       if (event.type === 'DAMAGE_TAKEN' && event.entityId === localPlayerId) {
         useGameStore.getState().setCameraShake(0.5); // medium shake
+      }
+      // Fireball explosion VFX
+      if (event.type === 'FIREBALL_EXPLOSION') {
+        const store = useGameStore.getState();
+        store.addHitSpark(event.position.x, event.position.z);
+        store.setCameraShake(0.6);
       }
     }
 
@@ -209,6 +243,17 @@ export function useSimulation() {
     }
     store.setEnemies(enemies);
 
+    const projectiles: Record<string, any> = {};
+    for (const [id, p] of world.projectiles) {
+      projectiles[id] = p;
+    }
+    store.setProjectiles(projectiles);
+
     store.setBoss(world.boss ? { ...world.boss } : null);
+
+    // Sync survival state
+    if (world.survival) {
+      store.setSurvival(world.survival.wave, world.survival.enemiesRemaining);
+    }
   });
 }

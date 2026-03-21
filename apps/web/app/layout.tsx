@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 
+const basePath = process.env.NODE_ENV === 'production' ? '/lab/curious' : '';
+
 export const metadata: Metadata = {
   title: 'Curious — Combat Sandbox',
   description: 'Multiplayer top-down combat sandbox prototype',
@@ -16,8 +18,22 @@ export default function RootLayout({
         <style>{`
           @font-face {
             font-family: 'Matemasie';
-            src: url('/lab/curious/fonts/Matemasie/Matemasie-Regular.ttf') format('truetype');
+            src: url('${basePath}/fonts/Matemasie/Matemasie-Regular.ttf') format('truetype');
             font-weight: 400;
+            font-style: normal;
+            font-display: swap;
+          }
+          @font-face {
+            font-family: 'Lexend';
+            src: url('${basePath}/fonts/Lexend/Lexend-Regular.ttf') format('truetype');
+            font-weight: 400;
+            font-style: normal;
+            font-display: swap;
+          }
+          @font-face {
+            font-family: 'Lexend';
+            src: url('${basePath}/fonts/Lexend/Lexend-Medium.ttf') format('truetype');
+            font-weight: 500;
             font-style: normal;
             font-display: swap;
           }

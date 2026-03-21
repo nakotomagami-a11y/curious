@@ -4,6 +4,7 @@ import { Billboard } from "@react-three/drei";
 import * as THREE from "three";
 import type { EnemySnapshot } from "@curious/shared";
 import { ENEMY_RADIUS } from "@curious/shared";
+import { vec2Angle } from "@curious/shared";
 import "@modules/Effects/materials/dissolve-material";
 import { DeathParticles } from "@modules/Effects/components/DeathParticles";
 
@@ -49,12 +50,19 @@ export function EnemyRig({ snapshot }: Props) {
   const trailTarget = useRef(1.0);  // health value we're catching up to
   const trailTimer = useRef(-1);    // <0 = idle, >=0 = animating (hold+shrink)
 
+  const isCaster = snapshot.enemyType === 'caster';
+  const isDasher = snapshot.enemyType === 'dasher';
   const attacking = snapshot.aiState === "attacking";
+  const isBurning = snapshot.buffs?.some(b => b.type === 'BURN') ?? false;
   const progress = snapshot.attackProgress;
 
   // Punch curve: quick extend to 0.5, hold briefly, retract
-  const punchT = attacking ? Math.sin(progress * Math.PI) : 0;
+  const punchT = attacking && !isCaster ? Math.sin(progress * Math.PI) : 0;
   const punchForward = punchT * PUNCH_EXTEND;
+
+  // Cast animation: hands raise upward
+  const castT = attacking && isCaster ? Math.sin(progress * Math.PI) : 0;
+  const castRaise = castT * 14; // how high hands lift
 
   useFrame((state, delta) => {
     const t = state.clock.elapsedTime;
@@ -66,15 +74,25 @@ export function EnemyRig({ snapshot }: Props) {
     }
     if (leftHandRef.current) {
       leftHandRef.current.position.y =
-        HAND_OFFSET_Y + Math.sin(t * SWAY_SPEED + 0.4) * SWAY_AMOUNT * 0.5;
+        HAND_OFFSET_Y + Math.sin(t * SWAY_SPEED + 0.4) * SWAY_AMOUNT * 0.5 + castRaise;
+      // Caster: bring hands forward and inward during cast
+      if (isCaster) {
+        leftHandRef.current.position.z = HAND_OFFSET_FORWARD + castT * 10;
+        leftHandRef.current.position.x = -HAND_OFFSET_SIDE + castT * 6;
+      }
     }
     if (rightHandRef.current) {
       rightHandRef.current.position.y =
-        HAND_OFFSET_Y + Math.sin(t * SWAY_SPEED + 0.8) * SWAY_AMOUNT * 0.5;
-      // Punch: extend right hand forward
-      rightHandRef.current.position.z = HAND_OFFSET_FORWARD + punchForward;
-      // Bring right hand inward during punch for a straight jab
-      rightHandRef.current.position.x = HAND_OFFSET_SIDE - punchT * 8;
+        HAND_OFFSET_Y + Math.sin(t * SWAY_SPEED + 0.8) * SWAY_AMOUNT * 0.5 + castRaise;
+      if (isCaster) {
+        // Caster: hands raise and come forward
+        rightHandRef.current.position.z = HAND_OFFSET_FORWARD + castT * 10;
+        rightHandRef.current.position.x = HAND_OFFSET_SIDE - castT * 6;
+      } else {
+        // Melee: punch forward
+        rightHandRef.current.position.z = HAND_OFFSET_FORWARD + punchForward;
+        rightHandRef.current.position.x = HAND_OFFSET_SIDE - punchT * 8;
+      }
     }
 
     // Knockback tilt — tilt backward when hit
@@ -165,10 +183,27 @@ export function EnemyRig({ snapshot }: Props) {
 
   const healthPct = snapshot.health / snapshot.maxHealth;
   const flashing = snapshot.hitFlashTimer > 0;
-  const bodyColor = flashing ? "#ff6633" : "#ee2233";
-  const handColor = flashing ? "#ff8855" : "#ff4455";
-  const flashEmissive = flashing ? "#ff6622" : "#000000";
+  const bodyColor = isCaster
+    ? (flashing ? "#9966ff" : "#6633cc")
+    : isDasher
+    ? (flashing ? "#ffaa33" : "#dd8800")
+    : (flashing ? "#ff6633" : "#ee2233");
+  const handColor = isCaster
+    ? (flashing ? "#bb88ff" : "#8855ee")
+    : isDasher
+    ? (flashing ? "#ffcc55" : "#ffbb44")
+    : (flashing ? "#ff8855" : "#ff4455");
+  const flashEmissive = isCaster
+    ? (flashing ? "#7733ff" : "#000000")
+    : isDasher
+    ? (flashing ? "#ff8800" : "#000000")
+    : (flashing ? "#ff6622" : "#000000");
   const flashIntensity = flashing ? 1.8 : 0;
+  const edgeColor = isCaster ? "#9966ff" : isDasher ? "#ff8800" : "#ff6633";
+  const healthBarColor = isCaster ? "#7733cc" : isDasher ? "#cc8800" : "#cc3333";
+  const healthBarBg = isCaster ? "#221133" : isDasher ? "#332200" : "#331111";
+  const deathParticleColor = isCaster ? "#8844cc" : isDasher ? "#cc8844" : "#cc4444";
+  const flashLightColor = isCaster ? "#9955ff" : isDasher ? "#ff9922" : "#ff7733";
 
   // Hide if dead
   if (snapshot.aiState === "dead") return null;
@@ -180,18 +215,39 @@ export function EnemyRig({ snapshot }: Props) {
     <group position={[snapshot.position.x, 0, snapshot.position.z]}>
       {/* Death particles — burst during dissolve */}
       {dissolving && (
-        <DeathParticles position={[0, 0, 0]} color="#cc4444" count={20} />
+        <DeathParticles position={[0, 0, 0]} color={deathParticleColor} count={20} />
       )}
 
       {/* Hit flash glow light — illuminates nearby entities */}
       {flashing && (
         <pointLight
           position={[0, BODY_HEIGHT / 2, 0]}
-          color="#ff7733"
+          color={flashLightColor}
           intensity={100}
           distance={160}
           decay={2}
         />
+      )}
+
+      {/* Burn glow — pulsing orange light when burning */}
+      {isBurning && (
+        <pointLight
+          position={[0, BODY_HEIGHT / 2, 0]}
+          color="#ff6600"
+          intensity={30}
+          distance={80}
+          decay={2}
+        />
+      )}
+
+      {/* Dasher telegraph line */}
+      {isDasher && snapshot.aiState === 'telegraphing' && (
+        <group rotation={[0, vec2Angle(snapshot.dashDirection), 0]}>
+          <mesh position={[0, 2, 150]}>
+            <boxGeometry args={[4, 2, 300]} />
+            <meshBasicMaterial color="#ff6600" transparent opacity={0.35} />
+          </mesh>
+        </group>
       )}
 
       {/* Rotation group */}
@@ -208,7 +264,7 @@ export function EnemyRig({ snapshot }: Props) {
               <dissolveMaterial
                 color={bodyColor}
                 dissolveProgress={dissolveProgress}
-                edgeColor="#ff6633"
+                edgeColor={edgeColor}
                 marbleStrength={0}
                 emissive={flashEmissive}
                 emissiveIntensity={flashIntensity}
@@ -226,7 +282,7 @@ export function EnemyRig({ snapshot }: Props) {
               <dissolveMaterial
                 color={handColor}
                 dissolveProgress={dissolveProgress}
-                edgeColor="#ff6633"
+                edgeColor={edgeColor}
                 emissive={flashEmissive}
                 emissiveIntensity={flashIntensity}
               />
@@ -243,7 +299,7 @@ export function EnemyRig({ snapshot }: Props) {
               <dissolveMaterial
                 color={handColor}
                 dissolveProgress={dissolveProgress}
-                edgeColor="#ff6633"
+                edgeColor={edgeColor}
                 emissive={flashEmissive}
                 emissiveIntensity={flashIntensity}
               />
@@ -258,7 +314,7 @@ export function EnemyRig({ snapshot }: Props) {
           {/* Background */}
           <mesh renderOrder={0}>
             <planeGeometry args={[24, 3]} />
-            <meshBasicMaterial color="#331111" transparent opacity={1.0} depthWrite={false} />
+            <meshBasicMaterial color={healthBarBg} transparent opacity={1.0} depthWrite={false} />
           </mesh>
           {/* White trailing damage bar — animated via ref */}
           <mesh ref={trailBarRef} position={[0, 0, 0.2]} renderOrder={1}>
@@ -268,7 +324,7 @@ export function EnemyRig({ snapshot }: Props) {
           {/* Red current health */}
           <mesh position={[(healthPct - 1) * 12, 0, 0.4]} renderOrder={2}>
             <planeGeometry args={[24 * healthPct, 2.4]} />
-            <meshBasicMaterial color="#cc3333" transparent opacity={1.0} depthWrite={false} />
+            <meshBasicMaterial color={healthBarColor} transparent opacity={1.0} depthWrite={false} />
           </mesh>
         </Billboard>
       )}

@@ -3,6 +3,8 @@ import type {
   PlayerSnapshot,
   EnemySnapshot,
   BossSnapshot,
+  ProjectileSnapshot,
+  SpellId,
   GameEvent,
   Vec2,
 } from '@curious/shared';
@@ -28,29 +30,50 @@ import {
   DISSOLVE_DURATION,
   DEATH_ROTATE_DURATION,
   DEATH_DELAY_BEFORE_DISSOLVE,
+  STAMINA_REGEN_RATE,
+  STAMINA_REGEN_RATE_IDLE,
+  MANA_REGEN_RATE,
+  PLAYER_HEALTH_REGEN_RATE,
 } from '@curious/shared';
 import { separateCircles } from './collision';
 import type { Circle } from './collision';
 import { tickEnemyAI } from './enemy-ai';
+import { tickCasterAI } from './caster-ai';
+import { tickDasherAI } from './dasher-ai';
 import { tickBossAI } from './boss-ai';
 import { tickSpawner } from './spawner';
+import { tickProjectiles } from './projectile';
+import { tickBuffs } from './buffs';
+import { tickSurvival } from './survival-spawner';
 import { BOSS_RESPAWN_DELAY, BOSS_MAX_HEALTH } from '@curious/shared';
+
+export type SurvivalState = {
+  wave: number;
+  enemiesRemaining: number;
+  enemiesTotal: number;
+  waveActive: boolean;
+  megaBossSpawned: boolean;
+};
 
 export type SimWorld = {
   players: Map<EntityId, PlayerSnapshot>;
   enemies: Map<EntityId, EnemySnapshot>;
+  projectiles: Map<EntityId, ProjectileSnapshot>;
   boss: BossSnapshot | null;
   events: GameEvent[];
   time: number;
+  survival: SurvivalState | null;
 };
 
 export function createWorld(): SimWorld {
   return {
     players: new Map(),
     enemies: new Map(),
+    projectiles: new Map(),
     boss: null,
     events: [],
     time: 0,
+    survival: null,
   };
 }
 
@@ -74,6 +97,21 @@ export function tickWorld(world: SimWorld, dt: number): void {
     applyKnockback(player, dt);
     clampPlayerToArena(player);
 
+    // Tick buffs
+    if (player.state === 'alive') {
+      const healthRef = { current: player.health };
+      const buffEvents = tickBuffs(player.id, player.buffs, healthRef, dt);
+      player.health = healthRef.current;
+      world.events.push(...buffEvents);
+
+      // Check death from burn
+      if (player.health <= 0 && player.state === 'alive') {
+        player.health = 0;
+        player.state = 'dying';
+        world.events.push({ type: 'ENTITY_DIED', entityId: player.id, entityType: 'player' });
+      }
+    }
+
     // Player death animation: tilt → pause → dissolve → dead
     if (player.state === 'dying') {
       player.deathTimer += dt;
@@ -96,11 +134,30 @@ export function tickWorld(world: SimWorld, dt: number): void {
 
   // Tick all enemies
   for (const enemy of world.enemies.values()) {
-    // AI state machine (idle/chase/attack)
-    const aiEvents = tickEnemyAI(enemy, world, dt);
+    // AI state machine — dispatch based on enemy type
+    const aiEvents = enemy.enemyType === 'caster'
+      ? tickCasterAI(enemy, world, dt)
+      : enemy.enemyType === 'dasher'
+      ? tickDasherAI(enemy, world, dt)
+      : tickEnemyAI(enemy, world, dt);
     world.events.push(...aiEvents);
     tickEnemyTimers(enemy, dt);
     applyKnockbackEnemy(enemy, dt);
+
+    // Tick enemy buffs
+    if (enemy.aiState !== 'dying' && enemy.aiState !== 'dead') {
+      const healthRef = { current: enemy.health };
+      const enemyBuffEvents = tickBuffs(enemy.id, enemy.buffs, healthRef, dt);
+      enemy.health = healthRef.current;
+      world.events.push(...enemyBuffEvents);
+
+      if (enemy.health <= 0 && enemy.aiState !== 'dying') {
+        enemy.health = 0;
+        enemy.aiState = 'dying';
+        world.events.push({ type: 'ENTITY_DIED', entityId: enemy.id, entityType: 'enemy' });
+      }
+    }
+
     // dying → dead transition
     if (enemy.aiState === 'dying') {
       enemy.dissolveProgress += dt / DISSOLVE_DURATION;
@@ -110,6 +167,10 @@ export function tickWorld(world: SimWorld, dt: number): void {
       }
     }
   }
+
+  // Tick projectiles (movement, collision, cleanup)
+  const projEvents = tickProjectiles(world, dt);
+  world.events.push(...projEvents);
 
   // Tick boss
   if (world.boss) {
@@ -158,8 +219,13 @@ export function tickWorld(world: SimWorld, dt: number): void {
     }
   }
 
-  // Spawner — maintain enemy count, respawn dead enemies
-  tickSpawner(world, dt);
+  // Spawner — dev mode only; survival uses wave spawner
+  if (world.survival) {
+    const survivalEvents = tickSurvival(world, dt);
+    world.events.push(...survivalEvents);
+  } else {
+    tickSpawner(world, dt);
+  }
 
   // Resolve collisions
   resolveCollisions(world);
@@ -217,6 +283,31 @@ function tickPlayerTimers(p: PlayerSnapshot, dt: number): void {
   if (p.hitFlashTimer > 0) p.hitFlashTimer = Math.max(0, p.hitFlashTimer - dt);
   if (p.dashTimer > 0) p.dashTimer = Math.max(0, p.dashTimer - dt);
   if (p.dashCooldownTimer > 0) p.dashCooldownTimer = Math.max(0, p.dashCooldownTimer - dt);
+  if (p.stunTimer > 0) p.stunTimer = Math.max(0, p.stunTimer - dt);
+
+  // Stamina regen
+  if (p.state === 'alive') {
+    const staminaRate = p.isMoving ? STAMINA_REGEN_RATE : STAMINA_REGEN_RATE_IDLE;
+    p.stamina = Math.min(p.maxStamina, p.stamina + staminaRate * dt);
+  }
+
+  // Mana regen
+  if (p.state === 'alive') {
+    p.mana = Math.min(p.maxMana, p.mana + MANA_REGEN_RATE * dt);
+  }
+
+  // Health regen
+  if (p.state === 'alive') {
+    p.health = Math.min(p.maxHealth, p.health + PLAYER_HEALTH_REGEN_RATE * dt);
+  }
+
+  // Spell cooldowns
+  for (const spellId of Object.keys(p.spellCooldowns) as SpellId[]) {
+    const cd = p.spellCooldowns[spellId];
+    if (cd !== undefined && cd > 0) {
+      p.spellCooldowns[spellId] = Math.max(0, cd - dt);
+    }
+  }
 }
 
 function applyKnockback(p: PlayerSnapshot, dt: number): void {
