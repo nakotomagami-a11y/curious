@@ -9,9 +9,9 @@ import {
   PLAYER_RADIUS, KNOCKBACK_PUNCH, IFRAME_DURATION, HIT_FLASH_DURATION,
   ARENA_HALF_WIDTH, ARENA_HALF_HEIGHT,
 } from '@curious/shared';
-import type { SimWorld } from './simulation';
-import { getBossSpeedMultiplier, getBossDamageMultiplier, updateBossPhase } from './boss-phases';
-import { checkBlockShield } from './buffs';
+import type { SimWorld } from '../simulation';
+import { getBossSpeedMultiplier, getBossDamageMultiplier, updateBossPhase } from '../entities/boss-phases';
+import { checkBlockShield } from '../entities/buffs';
 
 const HYDRA_ROTATION_SPEED = 4;
 

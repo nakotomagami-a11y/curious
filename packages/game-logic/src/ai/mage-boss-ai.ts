@@ -10,10 +10,10 @@ import {
   MAGE_BOSS_PATTERN_COOLDOWN, MAGE_BOSS_PATTERN_COUNT,
   PLAYER_RADIUS, ARENA_HALF_WIDTH, ARENA_HALF_HEIGHT,
 } from '@curious/shared';
-import type { SimWorld } from './simulation';
-import { generateEntityId } from './simulation';
-import { createProjectile } from './projectile';
-import { getBossSpeedMultiplier, getBossDamageMultiplier, updateBossPhase } from './boss-phases';
+import type { SimWorld } from '../simulation';
+import { generateEntityId } from '../simulation';
+import { createProjectile } from '../combat/projectile';
+import { getBossSpeedMultiplier, getBossDamageMultiplier, updateBossPhase } from '../entities/boss-phases';
 
 const MAGE_ROTATION_SPEED = 8;
 

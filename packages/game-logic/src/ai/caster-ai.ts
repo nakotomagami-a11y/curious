@@ -27,9 +27,9 @@ import {
   ARENA_HALF_WIDTH,
   ARENA_HALF_HEIGHT,
 } from '@curious/shared';
-import type { SimWorld } from './simulation';
-import { generateEntityId } from './simulation';
-import { createProjectile } from './projectile';
+import type { SimWorld } from '../simulation';
+import { generateEntityId } from '../simulation';
+import { createProjectile } from '../combat/projectile';
 
 const CASTER_ROTATION_SPEED = 8;
 

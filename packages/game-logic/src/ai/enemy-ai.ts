@@ -29,9 +29,9 @@ import {
   ARENA_HALF_WIDTH,
   ARENA_HALF_HEIGHT,
 } from '@curious/shared';
-import type { SimWorld } from './simulation';
-import { getVampiricHeal } from './elite';
-import { checkBlockShield } from './buffs';
+import type { SimWorld } from '../simulation';
+import { getVampiricHeal } from '../entities/elite';
+import { checkBlockShield } from '../entities/buffs';
 
 const ENEMY_ROTATION_SPEED = 8;
 const PUNCH_HIT_PROGRESS = 0.5; // check hit at 50% through punch

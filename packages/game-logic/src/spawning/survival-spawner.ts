@@ -13,10 +13,10 @@ import {
   ARENA_HALF_WIDTH,
   ARENA_HALF_HEIGHT,
 } from '@curious/shared';
-import type { SimWorld } from './simulation';
-import { generateEntityId } from './simulation';
-import { createEnemy } from './enemy';
-import { createBoss } from './boss';
+import type { SimWorld } from '../simulation';
+import { generateEntityId } from '../simulation';
+import { createEnemy } from '../entities/enemy';
+import { createBoss } from '../entities/boss';
 
 const SPAWN_MARGIN = 100;
 const MIN_SPAWN_DIST_FROM_PLAYER = 200;

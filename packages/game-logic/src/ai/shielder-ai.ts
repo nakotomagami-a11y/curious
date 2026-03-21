@@ -1,25 +1,23 @@
-import type { EnemySnapshot, GameEvent } from '@curious/shared';
+import type { EnemySnapshot, GameEvent, Vec2 } from '@curious/shared';
 import {
-  vec2, vec2Sub, vec2Normalize, vec2Scale, vec2Add, vec2Distance, vec2Angle, vec2FromAngle,
+  vec2, vec2Sub, vec2Normalize, vec2Scale, vec2Add, vec2Distance, vec2Angle, vec2Length, angleDifference,
 } from '@curious/shared';
 import {
-  TELEPORTER_SPEED, TELEPORTER_AGGRO_RANGE, TELEPORTER_LEASH_RANGE,
-  TELEPORTER_BLINK_RANGE, TELEPORTER_BLINK_COOLDOWN, TELEPORTER_BLINK_TELEGRAPH,
-  TELEPORTER_ATTACK_RANGE, TELEPORTER_ATTACK_COOLDOWN,
-  TELEPORTER_PUNCH_DAMAGE, TELEPORTER_PUNCH_DURATION,
-  PLAYER_RADIUS, ENEMY_RADIUS,
-  IFRAME_DURATION, HIT_FLASH_DURATION, KNOCKBACK_PUNCH,
+  SHIELDER_SPEED, SHIELDER_AGGRO_RANGE, SHIELDER_LEASH_RANGE,
+  SHIELDER_ATTACK_RANGE, SHIELDER_ATTACK_COOLDOWN, SHIELDER_PUNCH_DAMAGE,
+  SHIELDER_PUNCH_DURATION, ENEMY_DESIRED_DISTANCE,
+  IFRAME_DURATION, HIT_FLASH_DURATION, KNOCKBACK_PUNCH, PLAYER_RADIUS, ENEMY_RADIUS,
   ENEMY_SEPARATION_RADIUS, ENEMY_SEPARATION_FORCE,
 } from '@curious/shared';
-import type { SimWorld } from './simulation';
-import { getSpeedMultiplier, checkBlockShield } from './buffs';
-import { getVampiricHeal } from './elite';
+import type { SimWorld } from '../simulation';
+import { getSpeedMultiplier, checkBlockShield } from '../entities/buffs';
+import { getVampiricHeal } from '../entities/elite';
 
-export function tickTeleporterAI(enemy: EnemySnapshot, world: SimWorld, dt: number): GameEvent[] {
+export function tickShielderAI(enemy: EnemySnapshot, world: SimWorld, dt: number): GameEvent[] {
   const events: GameEvent[] = [];
   if (enemy.aiState === 'dying' || enemy.aiState === 'dead') return events;
 
-  const speed = TELEPORTER_SPEED * enemy.speedMultiplier * getSpeedMultiplier(enemy.buffs);
+  const speed = SHIELDER_SPEED * enemy.speedMultiplier * getSpeedMultiplier(enemy.buffs);
 
   switch (enemy.aiState) {
     case 'idle': {
@@ -27,7 +25,7 @@ export function tickTeleporterAI(enemy: EnemySnapshot, world: SimWorld, dt: numb
       for (const p of world.players.values()) {
         if (p.state !== 'alive') continue;
         const d = vec2Distance(enemy.position, p.position);
-        if (d < TELEPORTER_AGGRO_RANGE && (!nearest || d < nearest.dist)) {
+        if (d < SHIELDER_AGGRO_RANGE && (!nearest || d < nearest.dist)) {
           nearest = { id: p.id, dist: d };
         }
       }
@@ -47,22 +45,23 @@ export function tickTeleporterAI(enemy: EnemySnapshot, world: SimWorld, dt: numb
       }
 
       const dist = vec2Distance(enemy.position, target.position);
-      if (dist > TELEPORTER_LEASH_RANGE) {
+      if (dist > SHIELDER_LEASH_RANGE) {
         enemy.aiState = 'idle';
         enemy.targetId = null;
         break;
       }
 
+      // Always face target
       const toTarget = vec2Sub(target.position, enemy.position);
       enemy.rotation = vec2Angle(toTarget);
 
       // Move toward target
-      if (dist > TELEPORTER_ATTACK_RANGE + PLAYER_RADIUS + ENEMY_RADIUS) {
+      if (dist > ENEMY_DESIRED_DISTANCE) {
         const dir = vec2Normalize(toTarget);
         enemy.position = vec2Add(enemy.position, vec2Scale(dir, speed * dt));
       }
 
-      // Separation
+      // Separation from other enemies
       for (const other of world.enemies.values()) {
         if (other.id === enemy.id || other.aiState === 'dying' || other.aiState === 'dead') continue;
         const d = vec2Distance(enemy.position, other.position);
@@ -72,36 +71,9 @@ export function tickTeleporterAI(enemy: EnemySnapshot, world: SimWorld, dt: numb
         }
       }
 
-      // Blink cooldown
+      // Attack when in range and cooldown ready
       enemy.attackCooldownTimer = Math.max(0, enemy.attackCooldownTimer - dt);
-
-      // Blink toward target if in range and cooldown ready
-      if (dist > TELEPORTER_ATTACK_RANGE * 2 && dist < TELEPORTER_BLINK_RANGE * 2 && enemy.attackCooldownTimer <= 0) {
-        enemy.aiState = 'blinking';
-        enemy.telegraphTimer = TELEPORTER_BLINK_TELEGRAPH;
-        // Store blink destination (near the player, offset randomly)
-        const angle = vec2Angle(toTarget) + (Math.random() - 0.5) * 0.8;
-        const blinkDist = Math.min(dist - TELEPORTER_ATTACK_RANGE, TELEPORTER_BLINK_RANGE);
-        enemy.dashDirection = vec2FromAngle(angle);
-        enemy.dashTimer = blinkDist;
-      }
-
-      // Melee attack if close enough
-      if (dist < TELEPORTER_ATTACK_RANGE + PLAYER_RADIUS + ENEMY_RADIUS && enemy.attackCooldownTimer <= 0) {
-        enemy.aiState = 'attacking';
-        enemy.attackProgress = 0;
-      }
-      break;
-    }
-
-    case 'blinking': {
-      enemy.telegraphTimer -= dt;
-      if (enemy.telegraphTimer <= 0) {
-        // Teleport!
-        const blinkOffset = vec2Scale(enemy.dashDirection, enemy.dashTimer);
-        enemy.position = vec2Add(enemy.position, blinkOffset);
-        enemy.attackCooldownTimer = TELEPORTER_BLINK_COOLDOWN;
-        // Immediately attack after blink
+      if (dist < SHIELDER_ATTACK_RANGE + PLAYER_RADIUS + ENEMY_RADIUS && enemy.attackCooldownTimer <= 0) {
         enemy.aiState = 'attacking';
         enemy.attackProgress = 0;
       }
@@ -109,14 +81,15 @@ export function tickTeleporterAI(enemy: EnemySnapshot, world: SimWorld, dt: numb
     }
 
     case 'attacking': {
-      enemy.attackProgress += dt / TELEPORTER_PUNCH_DURATION;
+      enemy.attackProgress += dt / SHIELDER_PUNCH_DURATION;
 
-      if (enemy.attackProgress >= 0.5 && enemy.attackProgress - dt / TELEPORTER_PUNCH_DURATION < 0.5) {
+      // Hit at 50% progress
+      if (enemy.attackProgress >= 0.5 && enemy.attackProgress - dt / SHIELDER_PUNCH_DURATION < 0.5) {
         const target = enemy.targetId ? world.players.get(enemy.targetId) : null;
         if (target && target.state === 'alive' && target.iFrameTimer <= 0) {
           const dist = vec2Distance(enemy.position, target.position);
-          if (dist < TELEPORTER_ATTACK_RANGE + PLAYER_RADIUS + ENEMY_RADIUS + 20) {
-            const rawDamage = Math.round(TELEPORTER_PUNCH_DAMAGE * enemy.damageMultiplier);
+          if (dist < SHIELDER_ATTACK_RANGE + PLAYER_RADIUS + ENEMY_RADIUS + 10) {
+            const rawDamage = Math.round(SHIELDER_PUNCH_DAMAGE * enemy.damageMultiplier);
             const { actualDamage: damage } = checkBlockShield(target.buffs, rawDamage, target.id, events);
             if (damage > 0) {
               target.health -= damage;
@@ -141,7 +114,7 @@ export function tickTeleporterAI(enemy: EnemySnapshot, world: SimWorld, dt: numb
       }
 
       if (enemy.attackProgress >= 1.0) {
-        enemy.attackCooldownTimer = TELEPORTER_ATTACK_COOLDOWN;
+        enemy.attackCooldownTimer = SHIELDER_ATTACK_COOLDOWN;
         enemy.attackProgress = 0;
         enemy.aiState = 'chasing';
       }

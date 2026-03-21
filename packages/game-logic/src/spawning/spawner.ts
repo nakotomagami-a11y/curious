@@ -14,9 +14,9 @@ import {
   ARENA_HALF_HEIGHT,
   PLAYER_RADIUS,
 } from '@curious/shared';
-import type { SimWorld } from './simulation';
-import { generateEntityId } from './simulation';
-import { createEnemy } from './enemy';
+import type { SimWorld } from '../simulation';
+import { generateEntityId } from '../simulation';
+import { createEnemy } from '../entities/enemy';
 
 const MIN_SPAWN_DIST_FROM_PLAYER = 300;
 const SPAWN_MARGIN = 100; // keep away from arena edges

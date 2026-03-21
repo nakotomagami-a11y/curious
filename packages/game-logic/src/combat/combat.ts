@@ -31,7 +31,7 @@ import {
   vec2FromAngle,
   angleDifference,
 } from '@curious/shared';
-import { getEliteDamageReduction } from './elite';
+import { getEliteDamageReduction } from '../entities/elite';
 
 /** Try to start an attack. Returns true if attack started. */
 export function tryStartAttack(

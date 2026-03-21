@@ -37,24 +37,24 @@ import {
   MANA_REGEN_RATE,
   PLAYER_HEALTH_REGEN_RATE,
 } from '@curious/shared';
-import { separateCircles } from './collision';
-import type { Circle } from './collision';
-import { createSpatialGrid, clearGrid, insertEntity, getNearbyEntities } from './spatial-grid';
-import { tickEnemyAI } from './enemy-ai';
-import { tickCasterAI } from './caster-ai';
-import { tickDasherAI } from './dasher-ai';
-import { tickShielderAI } from './shielder-ai';
-import { tickSummonerAI } from './summoner-ai';
-import { tickBomberAI } from './bomber-ai';
-import { tickTeleporterAI } from './teleporter-ai';
-import { tickHealerAI } from './healer-ai';
-import { tickBossAI } from './boss-ai';
-import { tickSpawner } from './spawner';
-import { tickProjectiles } from './projectile';
-import { tickBuffs } from './buffs';
-import { tickSurvival } from './survival-spawner';
-import { tickZones } from './zones';
-import { tickSpellDrops, rollSpellDrop, checkAutoPickup } from './spell-drops';
+import { separateCircles } from './combat/collision';
+import type { Circle } from './combat/collision';
+import { createSpatialGrid, clearGrid, insertEntity, getNearbyEntities } from './combat/spatial-grid';
+import { tickEnemyAI } from './ai/enemy-ai';
+import { tickCasterAI } from './ai/caster-ai';
+import { tickDasherAI } from './ai/dasher-ai';
+import { tickShielderAI } from './ai/shielder-ai';
+import { tickSummonerAI } from './ai/summoner-ai';
+import { tickBomberAI } from './ai/bomber-ai';
+import { tickTeleporterAI } from './ai/teleporter-ai';
+import { tickHealerAI } from './ai/healer-ai';
+import { tickBossAI } from './ai/boss-ai';
+import { tickSpawner } from './spawning/spawner';
+import { tickProjectiles } from './combat/projectile';
+import { tickBuffs } from './entities/buffs';
+import { tickSurvival } from './spawning/survival-spawner';
+import { tickZones } from './spells/zones';
+import { tickSpellDrops, rollSpellDrop, checkAutoPickup } from './spells/spell-drops';
 import { BOSS_RESPAWN_DELAY, BOSS_MAX_HEALTH } from '@curious/shared';
 
 export type SurvivalState = {

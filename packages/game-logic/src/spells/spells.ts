@@ -14,9 +14,9 @@ import {
   ENEMY_RADIUS, BOSS_RADIUS, IFRAME_DURATION, HIT_FLASH_DURATION, FREEZE_DURATION,
 } from '@curious/shared';
 import { vec2Normalize, vec2Scale, vec2Add, vec2Length, vec2Sub, vec2Distance } from '@curious/shared';
-import type { SimWorld } from './simulation';
-import { generateEntityId } from './simulation';
-import { applyBuff } from './buffs';
+import type { SimWorld } from '../simulation';
+import { generateEntityId } from '../simulation';
+import { applyBuff } from '../entities/buffs';
 
 /** Try to cast the spell at the given slot index. Consumes the slot on success. */
 export function tryCastSpell(

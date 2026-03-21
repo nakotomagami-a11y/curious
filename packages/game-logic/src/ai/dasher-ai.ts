@@ -34,8 +34,8 @@ import {
   ARENA_HALF_WIDTH,
   ARENA_HALF_HEIGHT,
 } from '@curious/shared';
-import type { SimWorld } from './simulation';
-import { checkBlockShield } from './buffs';
+import type { SimWorld } from '../simulation';
+import { checkBlockShield } from '../entities/buffs';
 
 const DASHER_ROTATION_SPEED = 8;
 

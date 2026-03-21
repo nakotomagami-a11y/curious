@@ -5,7 +5,7 @@ import {
   GRAVITY_WELL_DPS, GRAVITY_WELL_PULL_FORCE,
   IFRAME_DURATION, HIT_FLASH_DURATION,
 } from '@curious/shared';
-import type { SimWorld } from './simulation';
+import type { SimWorld } from '../simulation';
 
 /** Tick all active zones — heals, shields, gravity wells. */
 export function tickZones(world: SimWorld, dt: number): GameEvent[] {

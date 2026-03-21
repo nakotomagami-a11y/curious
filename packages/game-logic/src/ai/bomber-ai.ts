@@ -9,8 +9,8 @@ import {
   IFRAME_DURATION, HIT_FLASH_DURATION, KNOCKBACK_SLAM,
   ENEMY_SEPARATION_RADIUS, ENEMY_SEPARATION_FORCE,
 } from '@curious/shared';
-import type { SimWorld } from './simulation';
-import { getSpeedMultiplier, checkBlockShield } from './buffs';
+import type { SimWorld } from '../simulation';
+import { getSpeedMultiplier, checkBlockShield } from '../entities/buffs';
 
 export function tickBomberAI(enemy: EnemySnapshot, world: SimWorld, dt: number): GameEvent[] {
   const events: GameEvent[] = [];

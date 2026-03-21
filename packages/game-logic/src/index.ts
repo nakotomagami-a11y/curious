@@ -1,66 +1,63 @@
 // Game logic modules — pure TS, no framework dependencies
 
+// --- Core ---
 export { createWorld, tickWorld, generateEntityId, resetEntityIdCounter } from './simulation';
 export type { SimWorld, SurvivalState } from './simulation';
-export { initSurvivalWave, tickSurvival } from './survival-spawner';
 
-export { createPlayer, applyPlayerMovement, setPlayerRotation, tryStartDash } from './player';
-export { createEnemy } from './enemy';
-export { tickEnemyAI } from './enemy-ai';
-export { tickCasterAI } from './caster-ai';
-export { createProjectile, tickProjectiles } from './projectile';
-export { tickDasherAI } from './dasher-ai';
-export { tickShielderAI } from './shielder-ai';
-export { tickSummonerAI } from './summoner-ai';
-export { tickBomberAI } from './bomber-ai';
-export { tickTeleporterAI } from './teleporter-ai';
-export { tickHealerAI } from './healer-ai';
-export { applyBuff, tickBuffs, hasBuff, getSpeedMultiplier, checkBlockShield } from './buffs';
-export { rollCritical } from './critical';
-export type { CritResult } from './critical';
+// --- Entities ---
+export { createPlayer, applyPlayerMovement, setPlayerRotation, tryStartDash } from './entities/player';
+export { createEnemy } from './entities/enemy';
+export { createBoss } from './entities/boss';
+export { applyBuff, tickBuffs, hasBuff, getSpeedMultiplier, checkBlockShield } from './entities/buffs';
 export {
   rollEliteModifiers, applyEliteStats, getEliteDamageReduction,
   getVampiricHeal, getThornsReflect, isBerserkerActive,
   getEliteSpeedMultiplier, getEliteDamageMultiplier, getEliteAttackCooldownMultiplier,
-} from './elite';
-export { tryCastSpell } from './spells';
-export { rollSpellDrop, tickSpellDrops, tryPickupSpell, checkAutoPickup } from './spell-drops';
-export { tickZones } from './zones';
-export { createBoss } from './boss';
-export { tickBossAI } from './boss-ai';
-export { tickHydraAI } from './hydra-ai';
-export { tickMageBossAI } from './mage-boss-ai';
-export { updateBossPhase, getBossSpeedMultiplier, getBossDamageMultiplier, getBossCooldownMultiplier } from './boss-phases';
-export { resetSpawner } from './spawner';
+} from './entities/elite';
+export { updateBossPhase, getBossSpeedMultiplier, getBossDamageMultiplier, getBossCooldownMultiplier } from './entities/boss-phases';
 
+// --- Combat ---
 export {
-  tryStartAttack,
-  tickAttack,
-  checkSlashHit,
-  applyHitToEnemy,
-  applyHitToBoss,
-} from './combat';
+  tryStartAttack, tickAttack, checkSlashHit, applyHitToEnemy, applyHitToBoss,
+} from './combat/combat';
+export { rollCritical } from './combat/critical';
+export type { CritResult } from './combat/critical';
+export { createProjectile, tickProjectiles } from './combat/projectile';
+export { circlesOverlap, circlesPenetration, separateCircles, pointInCircle } from './combat/collision';
+export type { Circle } from './combat/collision';
+export { createSpatialGrid, clearGrid, insertEntity, getNearbyEntities } from './combat/spatial-grid';
+export type { SpatialGrid } from './combat/spatial-grid';
 
-export { createCombatStats, processStatsEvent, calculateScore } from './stats';
+// --- AI ---
+export { tickEnemyAI } from './ai/enemy-ai';
+export { tickCasterAI } from './ai/caster-ai';
+export { tickDasherAI } from './ai/dasher-ai';
+export { tickShielderAI } from './ai/shielder-ai';
+export { tickSummonerAI } from './ai/summoner-ai';
+export { tickBomberAI } from './ai/bomber-ai';
+export { tickTeleporterAI } from './ai/teleporter-ai';
+export { tickHealerAI } from './ai/healer-ai';
+export { tickBossAI } from './ai/boss-ai';
+export { tickHydraAI } from './ai/hydra-ai';
+export { tickMageBossAI } from './ai/mage-boss-ai';
+export { getAttackTelegraph } from './ai/telegraphs';
+export type { TelegraphData, TelegraphShape } from './ai/telegraphs';
+export { assignPackRoles, getPackRole, getFlankAngle } from './ai/pack-ai';
+export type { PackRole } from './ai/pack-ai';
+export { addThreat, addProximityThreat, shareAllyThreat, getHighestThreatTarget, resetThreatTable, resetAllThreat } from './ai/aggro';
+export type { ThreatEntry } from './ai/aggro';
 
-export {
-  circlesOverlap,
-  circlesPenetration,
-  separateCircles,
-  pointInCircle,
-} from './collision';
-export type { Circle } from './collision';
+// --- Spells ---
+export { tryCastSpell } from './spells/spells';
+export { rollSpellDrop, tickSpellDrops, tryPickupSpell, checkAutoPickup } from './spells/spell-drops';
+export { tickZones } from './spells/zones';
 
-export { getAttackTelegraph } from './telegraphs';
-export type { TelegraphData, TelegraphShape } from './telegraphs';
-export { assignPackRoles, getPackRole, getFlankAngle } from './pack-ai';
-export type { PackRole } from './pack-ai';
-export {
-  addThreat, addProximityThreat, shareAllyThreat,
-  getHighestThreatTarget, resetThreatTable, resetAllThreat,
-} from './aggro';
-export type { ThreatEntry } from './aggro';
+// --- Spawning ---
+export { resetSpawner } from './spawning/spawner';
+export { initSurvivalWave, tickSurvival } from './spawning/survival-spawner';
 
-export { createSpatialGrid, clearGrid, insertEntity, getNearbyEntities } from './spatial-grid';
-export type { SpatialGrid } from './spatial-grid';
-export { ObjectPool } from './object-pool';
+// --- Stats ---
+export { createCombatStats, processStatsEvent, calculateScore } from './stats/stats';
+
+// --- Utils ---
+export { ObjectPool } from './utils/object-pool';

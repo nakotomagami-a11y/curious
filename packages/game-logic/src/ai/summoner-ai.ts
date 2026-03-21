@@ -7,10 +7,10 @@ import {
   SUMMONER_DESIRED_DISTANCE, SUMMONER_SUMMON_COOLDOWN, SUMMONER_SUMMON_DURATION,
   SUMMONER_MAX_MINIONS, ENEMY_SEPARATION_RADIUS, ENEMY_SEPARATION_FORCE,
 } from '@curious/shared';
-import type { SimWorld } from './simulation';
-import { generateEntityId } from './simulation';
-import { createEnemy } from './enemy';
-import { getSpeedMultiplier } from './buffs';
+import type { SimWorld } from '../simulation';
+import { generateEntityId } from '../simulation';
+import { createEnemy } from '../entities/enemy';
+import { getSpeedMultiplier } from '../entities/buffs';
 
 export function tickSummonerAI(enemy: EnemySnapshot, world: SimWorld, dt: number): GameEvent[] {
   const events: GameEvent[] = [];

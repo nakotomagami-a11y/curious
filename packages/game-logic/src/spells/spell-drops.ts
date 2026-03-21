@@ -6,8 +6,8 @@ import {
   SPELL_DROP_PICKUP_RANGE,
   MAX_SPELL_SLOTS,
 } from '@curious/shared';
-import type { SimWorld } from './simulation';
-import { generateEntityId } from './simulation';
+import type { SimWorld } from '../simulation';
+import { generateEntityId } from '../simulation';
 
 const ALL_SPELLS: SpellId[] = [
   'fireball',

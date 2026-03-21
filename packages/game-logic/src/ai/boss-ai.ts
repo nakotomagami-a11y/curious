@@ -29,11 +29,11 @@ import {
   ARENA_HALF_WIDTH,
   ARENA_HALF_HEIGHT,
 } from '@curious/shared';
-import type { SimWorld } from './simulation';
-import { updateBossPhase, getBossSpeedMultiplier, getBossDamageMultiplier } from './boss-phases';
+import type { SimWorld } from '../simulation';
+import { updateBossPhase, getBossSpeedMultiplier, getBossDamageMultiplier } from '../entities/boss-phases';
 import { tickHydraAI } from './hydra-ai';
 import { tickMageBossAI } from './mage-boss-ai';
-import { checkBlockShield } from './buffs';
+import { checkBlockShield } from '../entities/buffs';
 
 const BOSS_ROTATION_SPEED = 6;
 

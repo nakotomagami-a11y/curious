@@ -23,8 +23,8 @@ import {
   FREEZE_DURATION,
   KNOCKBACK_SWORD,
 } from '@curious/shared';
-import type { SimWorld } from './simulation';
-import { applyBuff, checkBlockShield } from './buffs';
+import type { SimWorld } from '../simulation';
+import { applyBuff, checkBlockShield } from '../entities/buffs';
 
 export function createProjectile(
   id: EntityId,

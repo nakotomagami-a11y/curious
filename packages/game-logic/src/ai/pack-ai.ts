@@ -7,7 +7,7 @@
 
 import type { EntityId, EnemyType, Vec2 } from '@curious/shared';
 import { vec2Sub, vec2Angle, vec2Normalize } from '@curious/shared';
-import type { SimWorld } from './simulation';
+import type { SimWorld } from '../simulation';
 
 export type PackRole = 'flanker' | 'presser' | 'support';
 

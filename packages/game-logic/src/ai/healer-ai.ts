@@ -8,8 +8,8 @@ import {
   HEALER_FLEE_DISTANCE, HEALER_DESIRED_DISTANCE,
   ENEMY_SEPARATION_RADIUS, ENEMY_SEPARATION_FORCE,
 } from '@curious/shared';
-import type { SimWorld } from './simulation';
-import { getSpeedMultiplier } from './buffs';
+import type { SimWorld } from '../simulation';
+import { getSpeedMultiplier } from '../entities/buffs';
 
 export function tickHealerAI(enemy: EnemySnapshot, world: SimWorld, dt: number): GameEvent[] {
   const events: GameEvent[] = [];
