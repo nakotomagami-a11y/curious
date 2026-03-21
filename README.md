@@ -19,9 +19,30 @@ A top-down multiplayer browser combat arena built with Three.js and React. Fight
 
 ### Combat
 - Sword combo system with knockback, hit-stop, and camera shake
-- 7 spell types: Fireball, Ice Lance (piercing), Lightning Chain (bounces between enemies), Heal Circle (AoE regen), Shield Bubble (blocks projectiles), Gravity Well (pulls + DPS), Block Shield (personal damage absorb)
 - Critical hit system — 15% base, +30% backstab bonus, guaranteed during enemy telegraphs
-- Spell drop pickups — up to 9 spell slots, dropped by enemies on death
+- Spell drop pickups — up to 9 spell slots, dropped by enemies on death (20% chance)
+- Dashing with i-frames and speed boost buff
+
+### Abilities (7 spells)
+| Spell | Type | Effect |
+|-------|------|--------|
+| **Fireball** | Projectile | Deals 20 damage, applies Burn debuff (3 DPS for 3s) |
+| **Ice Lance** | Piercing projectile | 25 damage, pierces up to 3 enemies, applies Freeze |
+| **Lightning Chain** | Instant | Bounces between up to 4 enemies (150u range), 15 damage each |
+| **Heal Circle** | Zone | Places healing area at feet, restores 30 HP over 3s |
+| **Shield Bubble** | Zone | Blocks enemy projectiles in 80u radius, absorbs 50 damage |
+| **Gravity Well** | Zone | Pulls enemies toward center (200u radius), 5 DPS for 3s |
+| **Block Shield** | Buff | Personal shield absorbing 40 damage for 1.5s, reflects 10 to melee attackers |
+
+Spells are single-use pickups in Survival mode. In Dev Playground all spells are available with infinite uses.
+
+### Buffs & Debuffs
+| Effect | Type | Description |
+|--------|------|-------------|
+| **Speed Boost** | Buff | 1.5x movement speed for 2s (from dashing) |
+| **Block Shield** | Buff | Absorbs incoming damage, reflects melee hits |
+| **Burn** | Debuff | 3 damage per second for 3s (from Fireball) |
+| **Freeze** | Debuff | 50% movement speed for 2s (from Ice Lance / Lightning Chain) |
 
 ### Enemies (8 types)
 | Type | Behavior |
@@ -55,6 +76,16 @@ All bosses have a 3-phase system (50% / 25% HP thresholds) with increasing speed
 - **Dev Playground** — infinite health/mana/stamina, all spells, sandbox
 - **Survival Waves** — progressive enemy waves with scaling difficulty, mega boss at wave 5
 - **Co-op Survival** — 2-4 player rooms via Supabase Realtime (host-authoritative)
+
+### Multiplayer (Co-op Survival)
+- **2-4 players** in a shared survival arena via Supabase Realtime
+- **Create or Join** rooms with shareable room codes
+- **Lobby system** — player list, ready-up, host starts when all ready
+- **Host-authoritative** — host runs the simulation, broadcasts world state at ~10Hz
+- **Client input relay** — clients send movement, aim, attack, and spell inputs to host
+- **Presence tracking** — live player list synced via Supabase Realtime Presence
+- **Room persistence** — active sessions stored in `game_sessions` table
+- **Leaderboard** — scores persisted to Supabase Postgres, viewable from main menu
 
 ### Polish
 - Post-processing (bloom, vignette, ACES tone mapping)
