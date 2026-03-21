@@ -11,11 +11,13 @@ import { FpsCounterOverlay } from "@modules/HUD/components/FpsCounter";
 import { AchievementPopup } from "@modules/HUD/components/AchievementPopup";
 import { KillStreakOverlay } from "@modules/Effects/components/KillStreakOverlay";
 import { LowHPVignette } from "@modules/Effects/components/LowHPVignette";
+import { DungeonMinimap } from "@modules/Dungeon/components/DungeonMinimap";
 import { useAppStore } from "@lib/stores/app-store";
 import { ACESFilmicToneMapping, SRGBColorSpace } from "three";
 
 export function Game() {
   const scene = useAppStore((s) => s.scene);
+  const gameMode = useAppStore((s) => s.gameMode);
   const showSettings = useAppStore((s) => s.showSettings);
   const toggleSettings = useAppStore((s) => s.toggleSettings);
   const gl: GLProps = {
@@ -74,6 +76,7 @@ export function Game() {
       <AchievementPopup />
       <KillStreakOverlay />
       <LowHPVignette />
+      {gameMode === 'dungeon' && <DungeonMinimap />}
     </div>
   );
 }

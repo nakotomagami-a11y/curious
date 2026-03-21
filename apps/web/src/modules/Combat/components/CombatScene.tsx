@@ -18,7 +18,9 @@ import { SpellDropRig } from "@modules/Effects/components/SpellDropRig";
 import { ZoneRig } from "@modules/Effects/components/ZoneRig";
 import { LightningChainVFX } from "@modules/Effects/components/LightningChainVFX";
 import { useGameStore } from "@lib/stores/game-store";
+import { useAppStore } from "@lib/stores/app-store";
 import { useSettingsStore } from "@lib/stores/settings-store";
+import { DungeonRenderer } from "@modules/Dungeon/components/DungeonRenderer";
 import { useTargeting } from "@modules/Combat/hooks/useTargeting";
 import type { PlayerSnapshot } from "@curious/shared";
 
@@ -42,6 +44,7 @@ function PlayerWithVFX({
 }
 
 export function CombatScene() {
+  const gameMode = useAppStore((s) => s.gameMode);
   const localPlayerId = useGameStore((s) => s.localPlayerId);
   const players = useGameStore((s) => s.players);
   const enemies = useGameStore((s) => s.enemies);
@@ -88,7 +91,7 @@ export function CombatScene() {
         intensity={0.4}
         color="#aaccff"
       />
-      <GroundPlane />
+      {gameMode === 'dungeon' ? <DungeonRenderer /> : <GroundPlane />}
 
       {/* Render all players with VFX */}
       {Object.values(players).map((p) => (

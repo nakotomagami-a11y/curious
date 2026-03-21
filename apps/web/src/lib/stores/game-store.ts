@@ -49,6 +49,10 @@ type GameStore = {
   damageNumbers: DamageNumber[];
   lightningBolts: LightningBolt[];
   selectedEnemyId: EntityId | null;
+  dungeonLayout: any | null;
+  dungeonRoomStates: Record<string, string>;
+  dungeonDoorStates: Record<string, string>;
+  currentDungeonRoom: string | null;
 
   setLocalPlayerId: (id: EntityId | null) => void;
   setPlayers: (players: Record<EntityId, PlayerSnapshot>) => void;
@@ -64,6 +68,10 @@ type GameStore = {
   addDamageNumber: (x: number, z: number, amount: number, isCrit?: boolean) => void;
   addLightningBolt: (points: { x: number; z: number }[]) => void;
   setSelectedEnemyId: (id: EntityId | null) => void;
+  setDungeonLayout: (layout: any) => void;
+  setDungeonRoomStates: (states: Record<string, string>) => void;
+  setDungeonDoorStates: (states: Record<string, string>) => void;
+  setCurrentDungeonRoom: (roomId: string | null) => void;
   clearGameState: () => void;
 };
 
@@ -86,6 +94,10 @@ export const useGameStore = create<GameStore>((set) => ({
   damageNumbers: [],
   lightningBolts: [],
   selectedEnemyId: null,
+  dungeonLayout: null,
+  dungeonRoomStates: {},
+  dungeonDoorStates: {},
+  currentDungeonRoom: null,
 
   setLocalPlayerId: (id) => set({ localPlayerId: id }),
   setPlayers: (players) => set({ players }),
@@ -110,9 +122,13 @@ export const useGameStore = create<GameStore>((set) => ({
       lightningBolts: [...s.lightningBolts, { id: ++sparkIdCounter, points, time: performance.now() }],
     })),
   setSelectedEnemyId: (id) => set({ selectedEnemyId: id }),
+  setDungeonLayout: (layout) => set({ dungeonLayout: layout }),
+  setDungeonRoomStates: (states) => set({ dungeonRoomStates: states }),
+  setDungeonDoorStates: (states) => set({ dungeonDoorStates: states }),
+  setCurrentDungeonRoom: (roomId) => set({ currentDungeonRoom: roomId }),
   clearGameState: () => {
     sparkIdCounter = 0;
     damageNumberIdCounter = 0;
-    set({ localPlayerId: null, players: {}, enemies: {}, projectiles: {}, spellDrops: {}, zones: {}, boss: null, survivalWave: null, survivalRemaining: 0, hitstopTimer: 0, cameraShake: 0, hitSparks: [], damageNumbers: [], lightningBolts: [], selectedEnemyId: null });
+    set({ localPlayerId: null, players: {}, enemies: {}, projectiles: {}, spellDrops: {}, zones: {}, boss: null, survivalWave: null, survivalRemaining: 0, hitstopTimer: 0, cameraShake: 0, hitSparks: [], damageNumbers: [], lightningBolts: [], selectedEnemyId: null, dungeonLayout: null, dungeonRoomStates: {}, dungeonDoorStates: {}, currentDungeonRoom: null });
   },
 }));

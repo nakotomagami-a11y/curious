@@ -400,6 +400,14 @@ export function useSimulation() {
       store.setSurvival(world.survival.wave, world.survival.enemiesRemaining);
     }
 
+    // Sync dungeon state
+    if (world.dungeonState && world.dungeon) {
+      store.setDungeonLayout(world.dungeon);
+      store.setDungeonRoomStates(world.dungeonState.roomStates);
+      store.setDungeonDoorStates(world.dungeonState.doorStates);
+      store.setCurrentDungeonRoom(world.dungeonState.currentRoomId);
+    }
+
     // --- Multiplayer: host broadcasts world snapshot ---
     const mp = useMultiplayerStore.getState();
     if (mp.connected && mp.isHost) {

@@ -60,6 +60,15 @@ export function ModeSelectScene() {
               onClick={() => handleModeSelect('survival')}
             />
 
+            {/* Dungeon Crawl */}
+            <ModeCard
+              title="Dungeon Crawl"
+              description="Explore procedural dungeons. Clear rooms, unlock doors, face the boss."
+              icon="🏰"
+              color="#6633aa"
+              onClick={() => handleModeSelect('dungeon')}
+            />
+
             {/* Co-op Survival */}
             <div style={{ position: 'relative' }}>
               <ModeCard

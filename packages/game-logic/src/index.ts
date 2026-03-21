@@ -59,5 +59,13 @@ export { initSurvivalWave, tickSurvival } from './spawning/survival-spawner';
 // --- Stats ---
 export { createCombatStats, processStatsEvent, calculateScore } from './stats/stats';
 
+// --- Dungeon ---
+export { generateDungeon } from './dungeon/dungeon-generator';
+export { validateDungeon } from './dungeon/dungeon-validator';
+export { tickDungeonSpawner } from './dungeon/dungeon-spawner';
+export { circleVsWallSegment, resolveEntityWallCollisions } from './dungeon/wall-collision';
+export { createWallGrid, queryWallGrid } from './dungeon/wall-spatial-grid';
+export type { WallGrid } from './dungeon/wall-spatial-grid';
+
 // --- Utils ---
 export { ObjectPool } from './utils/object-pool';

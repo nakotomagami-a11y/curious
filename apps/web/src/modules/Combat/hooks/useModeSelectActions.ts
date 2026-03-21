@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useAppStore } from '@lib/stores/app-store';
 import { useGameStore } from '@lib/stores/game-store';
-import { createPlayer, createBoss, generateEntityId, resetSpawner, initSurvivalWave } from '@curious/game-logic';
+import { createPlayer, createBoss, generateEntityId, resetSpawner, initSurvivalWave, generateDungeon } from '@curious/game-logic';
 import { vec2 } from '@curious/shared';
 import type { GameMode } from '@curious/shared';
 import { getSimWorld, resetSimWorld } from '@modules/Combat/hooks/world-manager';
@@ -38,6 +38,34 @@ export function useModeSelectActions() {
           'fireball', 'ice_lance', 'lightning_chain', 'heal_circle',
           'shield_bubble', 'gravity_well', 'block_shield',
         ];
+      } else if (mode === 'dungeon') {
+        // Dungeon: generate layout and initialize state
+        const dungeonLayout = generateDungeon();
+        world.dungeon = dungeonLayout;
+        world.dungeonState = {
+          currentRoomId: dungeonLayout.spawnRoomId,
+          roomStates: {},
+          doorStates: {},
+          roomsCleared: 0,
+          totalRooms: dungeonLayout.rooms.size,
+          activeRoomEnemyIds: [],
+          complete: false,
+        };
+
+        // Initialize room states
+        for (const [id] of dungeonLayout.rooms) {
+          world.dungeonState.roomStates[id] = id === dungeonLayout.spawnRoomId ? 'cleared' : 'undiscovered';
+        }
+        // Initialize door states
+        for (const [id] of dungeonLayout.doors) {
+          const spawnRoom = dungeonLayout.rooms.get(dungeonLayout.spawnRoomId);
+          const isSpawnDoor = spawnRoom?.doorIds.includes(id);
+          world.dungeonState.doorStates[id] = isSpawnDoor ? 'open' : 'unlocked';
+        }
+
+        // Spawn player at spawn room center
+        const spawnRoom = dungeonLayout.rooms.get(dungeonLayout.spawnRoomId)!;
+        player.position = { ...spawnRoom.center };
       } else {
         // Survival: init wave system, spawn wave 1
         world.survival = {

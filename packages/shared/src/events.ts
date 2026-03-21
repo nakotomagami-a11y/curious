@@ -71,4 +71,10 @@ export type GameEvent =
   // --- Lightning chain ---
   | { type: 'LIGHTNING_CHAIN'; sourceId: EntityId; targetIds: EntityId[]; damage: number }
   // --- Ice lance ---
-  | { type: 'ICE_LANCE_HIT'; targetId: EntityId; position: Vec2 };
+  | { type: 'ICE_LANCE_HIT'; targetId: EntityId; position: Vec2 }
+  // --- Dungeon ---
+  | { type: 'ROOM_ENTERED'; roomId: string }
+  | { type: 'ROOM_CLEARED'; roomId: string }
+  | { type: 'DOOR_LOCKED'; doorId: string }
+  | { type: 'DOOR_UNLOCKED'; doorId: string }
+  | { type: 'DUNGEON_COMPLETE' };

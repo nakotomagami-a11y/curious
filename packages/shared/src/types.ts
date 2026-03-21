@@ -4,7 +4,7 @@ export type EntityId = string;
 
 // --- App State ---
 export type AppScene = 'booting' | 'landing' | 'mode-select' | 'lobby' | 'joining' | 'combat' | 'dead';
-export type GameMode = 'dev-playground' | 'survival' | 'coop-survival';
+export type GameMode = 'dev-playground' | 'survival' | 'coop-survival' | 'dungeon';
 
 // --- Entity States ---
 export type PlayerState = 'alive' | 'dying' | 'dead';

@@ -9,6 +9,8 @@ import type {
   SpellId,
   GameEvent,
   Vec2,
+  DungeonLayout,
+  DungeonState,
 } from '@curious/shared';
 import {
   vec2,
@@ -56,6 +58,10 @@ import { tickSurvival } from './spawning/survival-spawner';
 import { tickZones } from './spells/zones';
 import { tickSpellDrops, rollSpellDrop, checkAutoPickup } from './spells/spell-drops';
 import { BOSS_RESPAWN_DELAY, BOSS_MAX_HEALTH } from '@curious/shared';
+import { tickDungeonSpawner } from './dungeon/dungeon-spawner';
+import { createWallGrid } from './dungeon/wall-spatial-grid';
+import type { WallGrid } from './dungeon/wall-spatial-grid';
+import { resolveEntityWallCollisions } from './dungeon/wall-collision';
 
 export type SurvivalState = {
   wave: number;
@@ -75,11 +81,14 @@ export type SimWorld = {
   events: GameEvent[];
   time: number;
   survival: SurvivalState | null;
+  dungeon: DungeonLayout | null;
+  dungeonState: DungeonState | null;
   /** Dev playground mode — infinite spells, no consumables */
   devMode: boolean;
 };
 
 export function createWorld(): SimWorld {
+  cachedWallGrid = null;
   return {
     players: new Map(),
     enemies: new Map(),
@@ -90,9 +99,13 @@ export function createWorld(): SimWorld {
     events: [],
     time: 0,
     survival: null,
+    dungeon: null,
+    dungeonState: null,
     devMode: false,
   };
 }
+
+let cachedWallGrid: WallGrid | null = null;
 
 let nextId = 0;
 export function generateEntityId(prefix: string): EntityId {
@@ -119,7 +132,9 @@ export function tickWorld(world: SimWorld, dt: number): void {
 
     tickPlayerTimers(player, dt);
     applyKnockback(player, dt);
-    clampPlayerToArena(player);
+    if (!world.dungeon) {
+      clampPlayerToArena(player);
+    }
 
     // Tick buffs
     if (player.state === 'alive') {
@@ -273,6 +288,12 @@ export function tickWorld(world: SimWorld, dt: number): void {
     tickSpawner(world, dt);
   }
 
+  // Dungeon spawner
+  if (world.dungeonState && world.dungeon) {
+    const dungeonEvents = tickDungeonSpawner(world, dt);
+    world.events.push(...dungeonEvents);
+  }
+
   // Resolve collisions
   resolveCollisions(world);
 
@@ -344,6 +365,27 @@ function resolveCollisions(world: SimWorld): void {
           b.obj.position = vec2Add(b.obj.position, result.pushB);
         }
       }
+    }
+  }
+
+  // Wall collisions (dungeon mode)
+  if (world.dungeon) {
+    if (!cachedWallGrid) {
+      cachedWallGrid = createWallGrid(world.dungeon.walls);
+    }
+    // Combine static walls with locked door walls
+    const activeWalls = [...world.dungeon.walls];
+    if (world.dungeonState) {
+      for (const [doorId, doorState] of Object.entries(world.dungeonState.doorStates)) {
+        if (doorState === 'locked') {
+          const doorWall = world.dungeon.doorWalls.get(doorId);
+          if (doorWall) activeWalls.push(doorWall);
+        }
+      }
+    }
+
+    for (const [id, entity] of entityMap) {
+      resolveEntityWallCollisions(entity.obj.position, entity.obj.radius, activeWalls);
     }
   }
 }
