@@ -247,11 +247,35 @@ function makeDoor(
   tileSize: number,
 ): Door {
   const id = `door_${doorIdCounter++}`;
-  const cx = (edge.col + 0.5) * tileSize;
-  const cz = (edge.row + 0.5) * tileSize;
 
-  const direction: 'horizontal' | 'vertical' =
-    edge.dir === 'N' || edge.dir === 'S' ? 'horizontal' : 'vertical';
+  // Door position must be on the tile EDGE (where walls are), not tile center.
+  // Edge direction tells us which edge of the tile the door sits on.
+  let cx: number;
+  let cz: number;
+  let direction: 'horizontal' | 'vertical';
+
+  switch (edge.dir) {
+    case 'N': // Top edge of tile: z = row * tileSize
+      cx = (edge.col + 0.5) * tileSize;
+      cz = edge.row * tileSize;
+      direction = 'horizontal';
+      break;
+    case 'S': // Bottom edge: z = (row + 1) * tileSize
+      cx = (edge.col + 0.5) * tileSize;
+      cz = (edge.row + 1) * tileSize;
+      direction = 'horizontal';
+      break;
+    case 'W': // Left edge: x = col * tileSize
+      cx = edge.col * tileSize;
+      cz = (edge.row + 0.5) * tileSize;
+      direction = 'vertical';
+      break;
+    case 'E': // Right edge: x = (col + 1) * tileSize
+      cx = (edge.col + 1) * tileSize;
+      cz = (edge.row + 0.5) * tileSize;
+      direction = 'vertical';
+      break;
+  }
 
   return {
     id,

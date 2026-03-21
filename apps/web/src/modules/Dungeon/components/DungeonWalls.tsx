@@ -12,22 +12,31 @@ type Props = {
 
 export function DungeonWalls({ layout }: Props) {
   const geometry = useMemo(() => {
-    const geometries: THREE.BoxGeometry[] = [];
-    const matrix = new THREE.Matrix4();
+    const geometries: THREE.BufferGeometry[] = [];
 
     for (const wall of layout.walls) {
-      const cx = (wall.ax + wall.bx) / 2;
-      const cz = (wall.az + wall.bz) / 2;
       const dx = wall.bx - wall.ax;
       const dz = wall.bz - wall.az;
       const length = Math.sqrt(dx * dx + dz * dz);
-      if (length < 0.01) continue;
+      if (length < 0.5) continue;
 
-      const angle = Math.atan2(dx, dz);
+      const cx = (wall.ax + wall.bx) / 2;
+      const cz = (wall.az + wall.bz) / 2;
 
-      const box = new THREE.BoxGeometry(length, WALL_HEIGHT, WALL_THICKNESS);
-      matrix.identity();
-      matrix.makeRotationY(angle);
+      // Wall segments are axis-aligned (horizontal or vertical)
+      const isHorizontal = Math.abs(dz) < 0.01;
+
+      let box: THREE.BoxGeometry;
+      if (isHorizontal) {
+        // Horizontal wall: extends along X axis
+        box = new THREE.BoxGeometry(length, WALL_HEIGHT, WALL_THICKNESS);
+      } else {
+        // Vertical wall: extends along Z axis
+        box = new THREE.BoxGeometry(WALL_THICKNESS, WALL_HEIGHT, length);
+      }
+
+      // Position the box at the wall center, raised to half height
+      const matrix = new THREE.Matrix4();
       matrix.setPosition(cx, WALL_HEIGHT / 2, cz);
       box.applyMatrix4(matrix);
       geometries.push(box);
@@ -35,7 +44,6 @@ export function DungeonWalls({ layout }: Props) {
 
     if (geometries.length === 0) return null;
     const merged = mergeGeometries(geometries, false);
-    // Dispose individual geometries
     for (const g of geometries) g.dispose();
     return merged;
   }, [layout]);
@@ -43,7 +51,7 @@ export function DungeonWalls({ layout }: Props) {
   if (!geometry) return null;
 
   return (
-    <mesh geometry={geometry}>
+    <mesh geometry={geometry} castShadow receiveShadow>
       <meshStandardMaterial color="#333344" metalness={0.3} roughness={0.8} />
     </mesh>
   );
