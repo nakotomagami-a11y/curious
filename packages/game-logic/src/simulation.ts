@@ -110,6 +110,13 @@ export function tickWorld(world: SimWorld, dt: number): void {
 
   // Tick all players
   for (const player of world.players.values()) {
+    // Dev mode: keep resources maxed
+    if (world.devMode && player.state === 'alive') {
+      player.health = player.maxHealth;
+      player.mana = player.maxMana;
+      player.stamina = player.maxStamina;
+    }
+
     tickPlayerTimers(player, dt);
     applyKnockback(player, dt);
     clampPlayerToArena(player);
