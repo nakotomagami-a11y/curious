@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm --version)",
+      "Bash(node --version)",
+      "Bash(yarn --version)",
+      "Bash(yarn install)",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(curl -s http://localhost:3000)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(pkill -f \"node.*next\")",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //PID 22440 //F)",
+      "Bash(npm run build)",
+      "Bash(grep -r \"\"\"@types/react\"\"\" apps/web/package.json packages/*/package.json)",
+      "Bash(lsof -i :3000)",
+      "Bash(powershell -Command \"Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | Select-Object OwningProcess\")",
+      "Bash(powershell -Command \"Get-Process -Id 24264 -ErrorAction SilentlyContinue | Select-Object Id, Name, Path\")",
+      "Bash(yarn add @react-three/postprocessing)",
+      "Bash(yarn build)",
+      "Bash(findstr \":3000\")",
+      "Bash(findstr \"LISTEN\")",
+      "Bash(xargs grep -l \"distance\\\\|closest\\\\|detect\")",
+      "Bash(yarn workspace @curious/web tsc --noEmit)",
+      "Bash(npx tsc --noEmit --project apps/web/tsconfig.json)",
+      "Bash(findstr :3000)",
+      "Bash(npx tsc --noEmit -p apps/web/tsconfig.json)"
+    ]
+  }
+}

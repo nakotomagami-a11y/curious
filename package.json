@@ -1,0 +1,17 @@
+{
+  "name": "curious",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "yarn workspace @curious/web dev",
+    "build": "yarn workspace @curious/web build",
+    "dev:server": "yarn workspace @curious/server dev",
+    "lint": "yarn workspace @curious/web lint"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
