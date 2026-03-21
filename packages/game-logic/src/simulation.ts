@@ -75,6 +75,8 @@ export type SimWorld = {
   events: GameEvent[];
   time: number;
   survival: SurvivalState | null;
+  /** Dev playground mode — infinite spells, no consumables */
+  devMode: boolean;
 };
 
 export function createWorld(): SimWorld {
@@ -88,6 +90,7 @@ export function createWorld(): SimWorld {
     events: [],
     time: 0,
     survival: null,
+    devMode: false,
   };
 }
 

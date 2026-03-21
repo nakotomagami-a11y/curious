@@ -19,6 +19,7 @@ import {
   tryCastSpell,
   rollCritical,
   getThornsReflect,
+  rollSpellDrop,
 } from '@curious/game-logic';
 import {
   PLAYER_SPEED,
@@ -206,6 +207,11 @@ export function useSimulation() {
               store.addDamageNumber(enemy.position.x, enemy.position.z, damage, crit.isCrit);
               if (crit.isCrit) anyCrit = true;
               hitLanded = true;
+              // Roll spell drop on sword kill (events from here get cleared by tickWorld)
+              if (enemy.health <= 0) {
+                const dropEvents = rollSpellDrop(enemy.position, world);
+                world.events.push(...dropEvents);
+              }
             }
           }
 

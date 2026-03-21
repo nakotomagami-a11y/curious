@@ -29,8 +29,15 @@ export function useModeSelectActions() {
 
       if (mode === 'dev-playground') {
         // Sandbox: spawn boss, enemies auto-spawn via tickSpawner
+        world.devMode = true;
         const boss = createBoss(generateEntityId('boss'), vec2(0, -250));
         world.boss = boss;
+
+        // Dev mode: give all spells (infinite use)
+        player.spellSlots = [
+          'fireball', 'ice_lance', 'lightning_chain', 'heal_circle',
+          'shield_bubble', 'gravity_well', 'block_shield',
+        ];
       } else {
         // Survival: init wave system, spawn wave 1
         world.survival = {

@@ -18,7 +18,7 @@ import type { SimWorld } from '../simulation';
 import { generateEntityId } from '../simulation';
 import { applyBuff } from '../entities/buffs';
 
-/** Try to cast the spell at the given slot index. Consumes the slot on success. */
+/** Try to cast the spell at the given slot index. Consumes the slot on success (unless dev mode). */
 export function tryCastSpell(
   player: PlayerSnapshot,
   spellSlot: number,
@@ -30,8 +30,8 @@ export function tryCastSpell(
   if (!spellId) return [];
 
   const events = castSpellById(player, spellId, aimDirection, world);
-  if (events.length > 0) {
-    // Single-use: remove from slot
+  if (events.length > 0 && !world.devMode) {
+    // Single-use: remove from slot (skipped in dev mode for infinite spells)
     player.spellSlots.splice(spellSlot, 1);
   }
   return events;
