@@ -4,6 +4,7 @@ import { useAppStore } from '@lib/stores/app-store';
 import { useGameStore } from '@lib/stores/game-store';
 import { useInputStore } from '@lib/stores/input-store';
 import { useStatsStore } from '@lib/stores/stats-store';
+import { useMultiplayerStore } from '@lib/stores/multiplayer-store';
 import {
   tickWorld,
   applyPlayerMovement,
@@ -39,6 +40,8 @@ export function useSimulation() {
   const hitThisAttack = useRef<Set<string>>(new Set());
   // Spell key debouncing — fire on key-down edge only (9 slots)
   const spellKeyState = useRef<boolean[]>([false, false, false, false, false, false, false, false, false]);
+  // Multiplayer broadcast throttle
+  const broadcastCounter = useRef(0);
   const escWasDown = useRef(false);
 
   useFrame((_, delta) => {
@@ -292,6 +295,56 @@ export function useSimulation() {
     // Sync survival state
     if (world.survival) {
       store.setSurvival(world.survival.wave, world.survival.enemiesRemaining);
+    }
+
+    // --- Multiplayer: host broadcasts world snapshot ---
+    const mp = useMultiplayerStore.getState();
+    if (mp.connected && mp.isHost) {
+      // Broadcast at ~10Hz (every 6 frames at 60fps)
+      broadcastCounter.current++;
+      if (broadcastCounter.current >= 6) {
+        broadcastCounter.current = 0;
+        mp.broadcastSnapshot({
+          players,
+          enemies,
+          projectiles,
+          spellDrops,
+          zones,
+          boss: world.boss ? { ...world.boss } : null,
+          survivalWave: world.survival?.wave ?? null,
+          survivalRemaining: world.survival?.enemiesRemaining ?? 0,
+          time: world.time,
+        });
+      }
+    }
+
+    // --- Multiplayer: client applies received snapshots ---
+    if (mp.connected && !mp.isHost && mp.latestSnapshot) {
+      const snap = mp.latestSnapshot;
+      store.setPlayers(snap.players);
+      store.setEnemies(snap.enemies);
+      store.setProjectiles(snap.projectiles);
+      store.setSpellDrops(snap.spellDrops);
+      store.setZones(snap.zones);
+      store.setBoss(snap.boss);
+      if (snap.survivalWave !== null) {
+        store.setSurvival(snap.survivalWave, snap.survivalRemaining);
+      }
+    }
+
+    // --- Multiplayer: client sends local input to host ---
+    if (mp.connected && !mp.isHost && localPlayerId) {
+      const input = useInputStore.getState();
+      const toTarget = vec2Sub(input.mouseWorldPos, { x: 0, z: 0 });
+      mp.sendInput({
+        playerId: localPlayerId,
+        moveDir: input.moveDir,
+        aimAngle: vec2Length(toTarget) > 1 ? Math.atan2(toTarget.x, toTarget.z) : 0,
+        attacking: isKeyDown('Space'),
+        dash: isKeyDown('ShiftLeft') || isKeyDown('ShiftRight'),
+        spellSlot: null,
+        timestamp: Date.now(),
+      });
     }
   });
 }

@@ -1,18 +1,5 @@
+import { useEffect } from 'react';
 import { useStatsStore } from '@lib/stores/stats-store';
-import type { LeaderboardEntry } from '@curious/shared';
-
-const MOCK_ENTRIES: LeaderboardEntry[] = [
-  { playerName: 'Aethon', score: 8420, wavesCleared: 12, timeSurvived: 342, date: '2026-03-15' },
-  { playerName: 'Brynhild', score: 7150, wavesCleared: 10, timeSurvived: 298, date: '2026-03-14' },
-  { playerName: 'Corvus', score: 6300, wavesCleared: 9, timeSurvived: 275, date: '2026-03-13' },
-  { playerName: 'Duskweaver', score: 5480, wavesCleared: 8, timeSurvived: 240, date: '2026-03-12' },
-  { playerName: 'Embera', score: 4720, wavesCleared: 7, timeSurvived: 210, date: '2026-03-11' },
-  { playerName: 'Fenrix', score: 3900, wavesCleared: 6, timeSurvived: 185, date: '2026-03-10' },
-  { playerName: 'Grimweld', score: 3200, wavesCleared: 5, timeSurvived: 160, date: '2026-03-09' },
-  { playerName: 'Helios', score: 2650, wavesCleared: 4, timeSurvived: 138, date: '2026-03-08' },
-  { playerName: 'Iskra', score: 1800, wavesCleared: 3, timeSurvived: 102, date: '2026-03-07' },
-  { playerName: 'Jareth', score: 950, wavesCleared: 2, timeSurvived: 65, date: '2026-03-06' },
-];
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -25,12 +12,14 @@ type LeaderboardPanelProps = {
 };
 
 export function LeaderboardPanel({ onBack }: LeaderboardPanelProps) {
-  const storedEntries = useStatsStore((s) => s.leaderboard);
+  const allEntries = useStatsStore((s) => s.leaderboard);
+  const loading = useStatsStore((s) => s.leaderboardLoading);
+  const loadLeaderboard = useStatsStore((s) => s.loadLeaderboard);
 
-  // Merge stored entries with mock entries, sort, take top 10
-  const allEntries = [...storedEntries, ...MOCK_ENTRIES]
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 10);
+  // Load from Supabase on mount
+  useEffect(() => {
+    loadLeaderboard();
+  }, [loadLeaderboard]);
 
   const cellStyle: React.CSSProperties = {
     padding: '6px 12px',
