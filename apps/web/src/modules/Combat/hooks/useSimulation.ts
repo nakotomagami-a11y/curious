@@ -307,6 +307,28 @@ export function useSimulation() {
         store.addHitSpark(event.position.x, event.position.z);
         store.setCameraShake(0.6);
       }
+      // Lightning chain VFX
+      if (event.type === 'LIGHTNING_CHAIN') {
+        const store = useGameStore.getState();
+        // Build chain points: source player → each target
+        const chainPoints: { x: number; z: number }[] = [];
+        const sourcePlayer = localPlayerId ? world.players.get(localPlayerId) : null;
+        if (sourcePlayer) {
+          chainPoints.push({ x: sourcePlayer.position.x, z: sourcePlayer.position.z });
+        }
+        for (const targetId of event.targetIds) {
+          const enemy = world.enemies.get(targetId);
+          if (enemy) {
+            chainPoints.push({ x: enemy.position.x, z: enemy.position.z });
+          } else if (world.boss && world.boss.id === targetId) {
+            chainPoints.push({ x: world.boss.position.x, z: world.boss.position.z });
+          }
+        }
+        if (chainPoints.length >= 2) {
+          store.addLightningBolt(chainPoints);
+        }
+        store.setCameraShake(0.8);
+      }
     }
 
     // Track combat stats

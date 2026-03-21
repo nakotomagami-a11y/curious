@@ -16,6 +16,7 @@ import { DashVFX } from "@modules/Effects/components/DashVFX";
 import { FootstepDust } from "@modules/Effects/components/FootstepDust";
 import { SpellDropRig } from "@modules/Effects/components/SpellDropRig";
 import { ZoneRig } from "@modules/Effects/components/ZoneRig";
+import { LightningChainVFX } from "@modules/Effects/components/LightningChainVFX";
 import { useGameStore } from "@lib/stores/game-store";
 import { useSettingsStore } from "@lib/stores/settings-store";
 import { useTargeting } from "@modules/Combat/hooks/useTargeting";
@@ -127,6 +128,9 @@ export function CombatScene() {
 
       {/* Hit impact sparks */}
       <HitSparks />
+
+      {/* Lightning chain bolts */}
+      <LightningChainVFX />
 
       {/* Floating damage numbers */}
       <DamageNumbers />

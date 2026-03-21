@@ -17,6 +17,13 @@ export type HitSpark = {
   isBoss: boolean;
 };
 
+export type LightningBolt = {
+  id: number;
+  /** Ordered list of positions the chain passes through (player → enemy1 → enemy2...) */
+  points: { x: number; z: number }[];
+  time: number;
+};
+
 export type DamageNumber = {
   id: number;
   x: number;
@@ -40,6 +47,7 @@ type GameStore = {
   cameraShake: number;
   hitSparks: HitSpark[];
   damageNumbers: DamageNumber[];
+  lightningBolts: LightningBolt[];
   selectedEnemyId: EntityId | null;
 
   setLocalPlayerId: (id: EntityId | null) => void;
@@ -54,6 +62,7 @@ type GameStore = {
   setCameraShake: (intensity: number) => void;
   addHitSpark: (x: number, z: number, isBoss?: boolean) => void;
   addDamageNumber: (x: number, z: number, amount: number, isCrit?: boolean) => void;
+  addLightningBolt: (points: { x: number; z: number }[]) => void;
   setSelectedEnemyId: (id: EntityId | null) => void;
   clearGameState: () => void;
 };
@@ -75,6 +84,7 @@ export const useGameStore = create<GameStore>((set) => ({
   cameraShake: 0,
   hitSparks: [],
   damageNumbers: [],
+  lightningBolts: [],
   selectedEnemyId: null,
 
   setLocalPlayerId: (id) => set({ localPlayerId: id }),
@@ -95,10 +105,14 @@ export const useGameStore = create<GameStore>((set) => ({
     set((s) => ({
       damageNumbers: [...s.damageNumbers, { id: ++damageNumberIdCounter, x, z, amount, time: performance.now(), isCrit }],
     })),
+  addLightningBolt: (points) =>
+    set((s) => ({
+      lightningBolts: [...s.lightningBolts, { id: ++sparkIdCounter, points, time: performance.now() }],
+    })),
   setSelectedEnemyId: (id) => set({ selectedEnemyId: id }),
   clearGameState: () => {
     sparkIdCounter = 0;
     damageNumberIdCounter = 0;
-    set({ localPlayerId: null, players: {}, enemies: {}, projectiles: {}, spellDrops: {}, zones: {}, boss: null, survivalWave: null, survivalRemaining: 0, hitstopTimer: 0, cameraShake: 0, hitSparks: [], damageNumbers: [], selectedEnemyId: null });
+    set({ localPlayerId: null, players: {}, enemies: {}, projectiles: {}, spellDrops: {}, zones: {}, boss: null, survivalWave: null, survivalRemaining: 0, hitstopTimer: 0, cameraShake: 0, hitSparks: [], damageNumbers: [], lightningBolts: [], selectedEnemyId: null });
   },
 }));
