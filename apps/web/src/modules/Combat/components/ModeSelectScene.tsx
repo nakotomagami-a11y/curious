@@ -1,10 +1,13 @@
 import { Html } from '@react-three/drei';
 import { useModeSelectActions } from '../hooks/useModeSelectActions';
 import { useAppStore } from '@lib/stores/app-store';
+import { playUiConfirm } from '@modules/Audio/sounds';
 
 export function ModeSelectScene() {
   const { handleModeSelect } = useModeSelectActions();
   const playerName = useAppStore((s) => s.playerName);
+  const setScene = useAppStore((s) => s.setScene);
+  const setGameMode = useAppStore((s) => s.setGameMode);
 
   return (
     <>
@@ -56,6 +59,65 @@ export function ModeSelectScene() {
               color="#ff6633"
               onClick={() => handleModeSelect('survival')}
             />
+
+            {/* Co-op Survival */}
+            <div style={{ position: 'relative' }}>
+              <ModeCard
+                title="Co-op Survival"
+                description="Team up with 2-4 players. Survive together or fall alone."
+                icon="🤝"
+                color="#aa44ff"
+                onClick={() => {
+                  playUiConfirm();
+                  setGameMode('coop-survival');
+                  setScene('lobby');
+                }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  borderRadius: '10px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'flex-start',
+                  paddingTop: '8px',
+                  pointerEvents: 'none',
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: '10px',
+                    fontWeight: 600,
+                    letterSpacing: '1.5px',
+                    color: '#aa44ff',
+                    background: 'rgba(170,68,255,0.12)',
+                    border: '1px solid rgba(170,68,255,0.3)',
+                    borderRadius: '4px',
+                    padding: '2px 8px',
+                    fontFamily: "'Lexend', sans-serif",
+                  }}
+                >
+                  COMING SOON
+                </span>
+              </div>
+              <span
+                style={{
+                  display: 'block',
+                  textAlign: 'center',
+                  fontSize: '11px',
+                  color: '#777',
+                  marginTop: '6px',
+                  fontFamily: "'Lexend', sans-serif",
+                }}
+              >
+                2-4 Players
+              </span>
+            </div>
           </div>
         </div>
       </Html>

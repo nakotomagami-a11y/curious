@@ -30,13 +30,31 @@ import {
   ARENA_HALF_HEIGHT,
 } from '@curious/shared';
 import type { SimWorld } from './simulation';
+import { updateBossPhase, getBossSpeedMultiplier, getBossDamageMultiplier } from './boss-phases';
+import { tickHydraAI } from './hydra-ai';
+import { tickMageBossAI } from './mage-boss-ai';
 
 const BOSS_ROTATION_SPEED = 6;
 
 /**
- * Tick the boss AI state machine. Returns events generated.
+ * Tick the boss AI state machine. Dispatches to type-specific AI.
  */
 export function tickBossAI(
+  boss: BossSnapshot,
+  world: SimWorld,
+  dt: number
+): GameEvent[] {
+  if (boss.aiState === 'dying' || boss.aiState === 'dead') return [];
+
+  // Dispatch to type-specific AI
+  if (boss.bossType === 'hydra') return tickHydraAI(boss, world, dt);
+  if (boss.bossType === 'mage') return tickMageBossAI(boss, world, dt);
+
+  // Guardian AI (default)
+  return tickGuardianAI(boss, world, dt);
+}
+
+function tickGuardianAI(
   boss: BossSnapshot,
   world: SimWorld,
   dt: number
@@ -49,6 +67,9 @@ export function tickBossAI(
   }
 
   const events: GameEvent[] = [];
+  events.push(...updateBossPhase(boss));
+
+  const speedMult = getBossSpeedMultiplier(boss);
 
   switch (boss.aiState) {
     case 'idle':
@@ -160,7 +181,7 @@ function tickChasing(boss: BossSnapshot, world: SimWorld, dt: number): void {
   const desiredDist = BOSS_RADIUS + PLAYER_RADIUS;
   if (dist > desiredDist) {
     const dir = vec2Normalize(vec2Sub(target.position, boss.position));
-    boss.position = vec2Add(boss.position, vec2Scale(dir, BOSS_SPEED * dt));
+    boss.position = vec2Add(boss.position, vec2Scale(dir, BOSS_SPEED * getBossSpeedMultiplier(boss) * dt));
   }
   faceToward(boss, target.position, dt);
 }

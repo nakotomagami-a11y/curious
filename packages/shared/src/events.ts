@@ -8,6 +8,7 @@ export type GameEvent =
       targetId: EntityId;
       damage: number;
       knockback: Vec2;
+      isCritical: boolean;
     }
   | {
       type: 'DAMAGE_TAKEN';
@@ -55,4 +56,19 @@ export type GameEvent =
   | { type: 'WAVE_START'; wave: number; enemyCount: number }
   | { type: 'WAVE_COMPLETE'; wave: number; nextWave: number }
   | { type: 'PLAYER_JOINED'; playerId: EntityId; name: string }
-  | { type: 'PLAYER_LEFT'; playerId: EntityId };
+  | { type: 'PLAYER_LEFT'; playerId: EntityId }
+  // --- Spell Drop events ---
+  | { type: 'SPELL_DROPPED'; spellId: SpellId; position: Vec2 }
+  | { type: 'SPELL_PICKED_UP'; playerId: EntityId; spellId: SpellId }
+  | { type: 'SPELL_SLOT_FULL'; playerId: EntityId }
+  // --- Shield events ---
+  | { type: 'SHIELD_BLOCK'; entityId: EntityId; damageAbsorbed: number }
+  | { type: 'SHIELD_BREAK'; entityId: EntityId }
+  // --- Zone events ---
+  | { type: 'ZONE_SPAWNED'; zoneId: EntityId; zoneType: string; position: Vec2; radius: number }
+  | { type: 'ZONE_EXPIRED'; zoneId: EntityId }
+  | { type: 'HEAL_TICK'; entityId: EntityId; amount: number }
+  // --- Lightning chain ---
+  | { type: 'LIGHTNING_CHAIN'; sourceId: EntityId; targetIds: EntityId[]; damage: number }
+  // --- Ice lance ---
+  | { type: 'ICE_LANCE_HIT'; targetId: EntityId; position: Vec2 };

@@ -13,6 +13,9 @@ import { DamageNumbers } from "@modules/Effects/components/DamageNumbers";
 import { SelectionIndicator } from "@modules/Effects/components/SelectionBrackets";
 import { PostProcessing } from "@modules/Effects/components/PostProcessing";
 import { DashVFX } from "@modules/Effects/components/DashVFX";
+import { FootstepDust } from "@modules/Effects/components/FootstepDust";
+import { SpellDropRig } from "@modules/Effects/components/SpellDropRig";
+import { ZoneRig } from "@modules/Effects/components/ZoneRig";
 import { useGameStore } from "@lib/stores/game-store";
 import { useTargeting } from "@modules/Combat/hooks/useTargeting";
 import type { PlayerSnapshot } from "@curious/shared";
@@ -31,6 +34,7 @@ function PlayerWithVFX({
       <SlashArc rigRef={rigRef} snapshot={snapshot} />
       <SwordSparks rigRef={rigRef} snapshot={snapshot} />
       <DashVFX snapshot={snapshot} />
+      <FootstepDust snapshot={snapshot} />
     </>
   );
 }
@@ -40,6 +44,8 @@ export function CombatScene() {
   const players = useGameStore((s) => s.players);
   const enemies = useGameStore((s) => s.enemies);
   const projectiles = useGameStore((s) => s.projectiles);
+  const spellDrops = useGameStore((s) => s.spellDrops);
+  const zones = useGameStore((s) => s.zones);
   const boss = useGameStore((s) => s.boss);
 
   // Magnetic cursor + enemy selection
@@ -94,6 +100,16 @@ export function CombatScene() {
       {/* Render projectiles */}
       {Object.values(projectiles).map((p) => (
         <ProjectileRig key={p.id} snapshot={p} />
+      ))}
+
+      {/* Render spell drops */}
+      {Object.values(spellDrops).map((d) => (
+        <SpellDropRig key={d.id} snapshot={d} />
+      ))}
+
+      {/* Render zones (heal circles, shield bubbles, gravity wells) */}
+      {Object.values(zones).map((z) => (
+        <ZoneRig key={z.id} snapshot={z} />
       ))}
 
       {/* Render boss */}

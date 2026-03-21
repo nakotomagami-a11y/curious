@@ -34,10 +34,11 @@ type Slot = {
   born: number;       // performance.now() timestamp
   offsetX: number;    // random jitter
   offsetZ: number;
+  isCrit: boolean;
 };
 
 function createSlot(): Slot {
-  return { active: false, x: 0, z: 0, amount: 0, born: 0, offsetX: 0, offsetZ: 0 };
+  return { active: false, x: 0, z: 0, amount: 0, born: 0, offsetX: 0, offsetZ: 0, isCrit: false };
 }
 
 export function DamageNumbers() {
@@ -70,14 +71,17 @@ export function DamageNumbers() {
         slot.z = dn.z;
         slot.amount = dn.amount;
         slot.born = dn.time;
+        slot.isCrit = dn.isCrit ?? false;
         slot.offsetX = (Math.random() - 0.5) * HORIZ_JITTER * 2;
         slot.offsetZ = (Math.random() - 0.5) * HORIZ_JITTER * 2;
 
-        // Update text content via ref
+        // Update text content and color via ref
         const idx = slots.current.indexOf(slot);
         const textObj = textRefs.current[idx];
         if (textObj) {
-          textObj.text = String(dn.amount);
+          textObj.text = slot.isCrit ? `CRIT! ${dn.amount}` : String(dn.amount);
+          textObj.color = slot.isCrit ? '#ffcc00' : '#ffffff';
+          textObj.fontSize = slot.isCrit ? FONT_SIZE * 1.4 : FONT_SIZE;
         }
       }
       useGameStore.setState({ damageNumbers: [] });
@@ -113,11 +117,12 @@ export function DamageNumbers() {
         slot.z + slot.offsetZ,
       );
 
-      // Scale: pop in then settle
+      // Scale: pop in then settle (bigger pop on crit)
+      const popPeak = slot.isCrit ? SCALE_POP_PEAK * 1.5 : SCALE_POP_PEAK;
       let scale: number;
       if (age < SCALE_POP_DURATION) {
         const t = age / SCALE_POP_DURATION;
-        scale = 1.0 + (SCALE_POP_PEAK - 1.0) * Math.sin(t * Math.PI);
+        scale = 1.0 + (popPeak - 1.0) * Math.sin(t * Math.PI);
       } else {
         scale = 1.0;
       }

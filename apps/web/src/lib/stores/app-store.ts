@@ -6,11 +6,13 @@ type AppStore = {
   playerName: string;
   sessionId: EntityId | null;
   gameMode: GameMode | null;
+  showSettings: boolean;
 
   setScene: (scene: AppScene) => void;
   setPlayerName: (name: string) => void;
   setSessionId: (id: EntityId | null) => void;
   setGameMode: (mode: GameMode) => void;
+  toggleSettings: () => void;
   reset: () => void;
 };
 
@@ -19,10 +21,12 @@ export const useAppStore = create<AppStore>((set) => ({
   playerName: '',
   sessionId: null,
   gameMode: null,
+  showSettings: false,
 
   setScene: (scene) => set({ scene }),
   setPlayerName: (name) => set({ playerName: name }),
   setSessionId: (id) => set({ sessionId: id }),
   setGameMode: (mode) => set({ gameMode: mode }),
-  reset: () => set({ scene: 'landing', playerName: '', sessionId: null, gameMode: null }),
+  toggleSettings: () => set((s) => ({ showSettings: !s.showSettings })),
+  reset: () => set({ scene: 'landing', playerName: '', sessionId: null, gameMode: null, showSettings: false }),
 }));

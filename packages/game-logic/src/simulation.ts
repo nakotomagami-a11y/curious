@@ -4,6 +4,8 @@ import type {
   EnemySnapshot,
   BossSnapshot,
   ProjectileSnapshot,
+  SpellDropSnapshot,
+  ZoneSnapshot,
   SpellId,
   GameEvent,
   Vec2,
@@ -40,11 +42,18 @@ import type { Circle } from './collision';
 import { tickEnemyAI } from './enemy-ai';
 import { tickCasterAI } from './caster-ai';
 import { tickDasherAI } from './dasher-ai';
+import { tickShielderAI } from './shielder-ai';
+import { tickSummonerAI } from './summoner-ai';
+import { tickBomberAI } from './bomber-ai';
+import { tickTeleporterAI } from './teleporter-ai';
+import { tickHealerAI } from './healer-ai';
 import { tickBossAI } from './boss-ai';
 import { tickSpawner } from './spawner';
 import { tickProjectiles } from './projectile';
 import { tickBuffs } from './buffs';
 import { tickSurvival } from './survival-spawner';
+import { tickZones } from './zones';
+import { tickSpellDrops, rollSpellDrop, checkAutoPickup } from './spell-drops';
 import { BOSS_RESPAWN_DELAY, BOSS_MAX_HEALTH } from '@curious/shared';
 
 export type SurvivalState = {
@@ -59,6 +68,8 @@ export type SimWorld = {
   players: Map<EntityId, PlayerSnapshot>;
   enemies: Map<EntityId, EnemySnapshot>;
   projectiles: Map<EntityId, ProjectileSnapshot>;
+  spellDrops: Map<EntityId, SpellDropSnapshot>;
+  zones: Map<EntityId, ZoneSnapshot>;
   boss: BossSnapshot | null;
   events: GameEvent[];
   time: number;
@@ -70,6 +81,8 @@ export function createWorld(): SimWorld {
     players: new Map(),
     enemies: new Map(),
     projectiles: new Map(),
+    spellDrops: new Map(),
+    zones: new Map(),
     boss: null,
     events: [],
     time: 0,
@@ -135,11 +148,17 @@ export function tickWorld(world: SimWorld, dt: number): void {
   // Tick all enemies
   for (const enemy of world.enemies.values()) {
     // AI state machine — dispatch based on enemy type
-    const aiEvents = enemy.enemyType === 'caster'
-      ? tickCasterAI(enemy, world, dt)
-      : enemy.enemyType === 'dasher'
-      ? tickDasherAI(enemy, world, dt)
-      : tickEnemyAI(enemy, world, dt);
+    let aiEvents: GameEvent[];
+    switch (enemy.enemyType) {
+      case 'caster':     aiEvents = tickCasterAI(enemy, world, dt); break;
+      case 'dasher':     aiEvents = tickDasherAI(enemy, world, dt); break;
+      case 'shielder':   aiEvents = tickShielderAI(enemy, world, dt); break;
+      case 'summoner':   aiEvents = tickSummonerAI(enemy, world, dt); break;
+      case 'bomber':     aiEvents = tickBomberAI(enemy, world, dt); break;
+      case 'teleporter': aiEvents = tickTeleporterAI(enemy, world, dt); break;
+      case 'healer':     aiEvents = tickHealerAI(enemy, world, dt); break;
+      default:           aiEvents = tickEnemyAI(enemy, world, dt); break;
+    }
     world.events.push(...aiEvents);
     tickEnemyTimers(enemy, dt);
     applyKnockbackEnemy(enemy, dt);
@@ -151,7 +170,7 @@ export function tickWorld(world: SimWorld, dt: number): void {
       enemy.health = healthRef.current;
       world.events.push(...enemyBuffEvents);
 
-      if (enemy.health <= 0 && enemy.aiState !== 'dying') {
+      if (enemy.health <= 0) {
         enemy.health = 0;
         enemy.aiState = 'dying';
         world.events.push({ type: 'ENTITY_DIED', entityId: enemy.id, entityType: 'enemy' });
@@ -167,6 +186,21 @@ export function tickWorld(world: SimWorld, dt: number): void {
       }
     }
   }
+
+  // Auto-pickup spell drops for all players
+  for (const player of world.players.values()) {
+    if (player.state === 'alive') {
+      const pickupEvents = checkAutoPickup(player, world);
+      world.events.push(...pickupEvents);
+    }
+  }
+
+  // Tick spell drop lifetimes
+  tickSpellDrops(world, dt);
+
+  // Tick zones (heal circles, shield bubbles, gravity wells)
+  const zoneEvents = tickZones(world, dt);
+  world.events.push(...zoneEvents);
 
   // Tick projectiles (movement, collision, cleanup)
   const projEvents = tickProjectiles(world, dt);
@@ -195,9 +229,10 @@ export function tickWorld(world: SimWorld, dt: number): void {
       world.boss.respawnTimer -= dt;
       if (world.boss.respawnTimer <= 0) {
         // Reset boss
-        world.boss.health = BOSS_MAX_HEALTH;
-        world.boss.maxHealth = BOSS_MAX_HEALTH;
+        world.boss.health = world.boss.maxHealth;
         world.boss.aiState = 'idle';
+        world.boss.phase = 1;
+        world.boss.rageMode = false;
         world.boss.position = { x: 0, z: -250 };
         world.boss.rotation = 0;
         world.boss.dissolveProgress = 0;
@@ -229,6 +264,17 @@ export function tickWorld(world: SimWorld, dt: number): void {
 
   // Resolve collisions
   resolveCollisions(world);
+
+  // Roll spell drops for enemies that died this tick
+  for (const event of world.events) {
+    if (event.type === 'ENTITY_DIED' && event.entityType === 'enemy') {
+      const enemy = world.enemies.get(event.entityId);
+      if (enemy) {
+        const dropEvents = rollSpellDrop(enemy.position, world);
+        world.events.push(...dropEvents);
+      }
+    }
+  }
 }
 
 // --- Collision resolution ---

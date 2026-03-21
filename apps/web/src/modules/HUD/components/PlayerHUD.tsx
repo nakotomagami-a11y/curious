@@ -2,8 +2,8 @@
 
 import { useGameStore } from '@lib/stores/game-store';
 import { useAppStore } from '@lib/stores/app-store';
-import { PLAYER_MAX_HEALTH, PLAYER_MAX_MANA, PLAYER_MAX_STAMINA } from '@curious/shared';
-import type { BuffType } from '@curious/shared';
+import { PLAYER_MAX_HEALTH, PLAYER_MAX_MANA, PLAYER_MAX_STAMINA, MAX_SPELL_SLOTS } from '@curious/shared';
+import type { BuffType, SpellId } from '@curious/shared';
 
 function ResourceBar({
   pct,
@@ -42,15 +42,48 @@ function getBuffColor(type: BuffType): string {
   switch (type) {
     case 'SPEED_BOOST': return 'rgba(66, 165, 245, 0.6)';
     case 'BURN': return 'rgba(255, 87, 34, 0.6)';
+    case 'FREEZE': return 'rgba(100, 200, 255, 0.6)';
+    case 'BLOCK_SHIELD': return 'rgba(255, 215, 0, 0.6)';
   }
 }
 function getBuffIcon(type: BuffType): string {
-  switch (type) { case 'SPEED_BOOST': return '\u26A1'; case 'BURN': return '\uD83D\uDD25'; }
+  switch (type) {
+    case 'SPEED_BOOST': return '\u26A1';
+    case 'BURN': return '\uD83D\uDD25';
+    case 'FREEZE': return '\u2744\uFE0F';
+    case 'BLOCK_SHIELD': return '\uD83D\uDEE1\uFE0F';
+  }
 }
 function getBuffTooltip(type: BuffType): string {
   switch (type) {
     case 'SPEED_BOOST': return 'Speed Boost: 1.5x movement speed for 2s';
     case 'BURN': return 'Burn: 3 damage per second for 3s';
+    case 'FREEZE': return 'Freeze: 50% movement speed for 2s';
+    case 'BLOCK_SHIELD': return 'Block Shield: absorbs up to 40 damage';
+  }
+}
+
+function getSpellIcon(spellId: SpellId): string {
+  switch (spellId) {
+    case 'fireball': return '\uD83D\uDD25';
+    case 'ice_lance': return '\u2744\uFE0F';
+    case 'lightning_chain': return '\u26A1';
+    case 'heal_circle': return '\uD83D\uDC9A';
+    case 'shield_bubble': return '\uD83D\uDD35';
+    case 'gravity_well': return '\uD83C\uDF00';
+    case 'block_shield': return '\uD83D\uDEE1\uFE0F';
+  }
+}
+
+function getSpellColor(spellId: SpellId): string {
+  switch (spellId) {
+    case 'fireball': return 'rgba(255, 100, 30, 0.3)';
+    case 'ice_lance': return 'rgba(100, 200, 255, 0.3)';
+    case 'lightning_chain': return 'rgba(200, 200, 50, 0.3)';
+    case 'heal_circle': return 'rgba(50, 200, 80, 0.3)';
+    case 'shield_bubble': return 'rgba(80, 140, 255, 0.3)';
+    case 'gravity_well': return 'rgba(150, 50, 200, 0.3)';
+    case 'block_shield': return 'rgba(200, 180, 50, 0.3)';
   }
 }
 
@@ -70,7 +103,7 @@ export function PlayerHUD() {
   const staminaPct = Math.max(0, player.stamina / PLAYER_MAX_STAMINA);
   const isLow = healthPct < 0.3;
 
-  const fireballCd = player.spellCooldowns['fireball'] ?? 0;
+  const spellSlots = player.spellSlots ?? [];
 
   return (
     <div
@@ -141,44 +174,45 @@ export function PlayerHUD() {
         </div>
       )}
 
-      {/* Spell slots */}
-      <div style={{ display: 'flex', gap: 3, marginTop: 4 }}>
-        {[0, 1, 2].map(slot => {
-          const spellId = slot === 0 ? 'fireball' : null;
-          const cooldown = slot === 0 ? fireballCd : 0;
-          const onCooldown = cooldown > 0;
+      {/* Spell slots — dynamic, up to 9 */}
+      <div style={{ display: 'flex', gap: 3, marginTop: 4, flexWrap: 'wrap', maxWidth: 280 }}>
+        {Array.from({ length: MAX_SPELL_SLOTS }).map((_, slot) => {
+          const spellId = spellSlots[slot] ?? null;
 
           return (
             <div key={slot} style={{
-              width: 30,
-              height: 30,
-              border: `1px solid ${onCooldown ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.25)'}`,
+              width: 28,
+              height: 28,
+              border: `1px solid ${spellId ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.08)'}`,
               borderRadius: 4,
-              background: onCooldown ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.06)',
+              background: spellId ? getSpellColor(spellId) : 'rgba(255,255,255,0.03)',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
               position: 'relative',
               pointerEvents: 'auto',
+              opacity: spellId ? 1 : 0.4,
             }}>
               <span style={{ fontSize: 7, color: '#666', position: 'absolute', top: 1, left: 3 }}>
                 {slot + 1}
               </span>
               {spellId && (
-                <span style={{ fontSize: 12, opacity: onCooldown ? 0.4 : 1 }}>
-                  {'\uD83D\uDD25'}
-                </span>
-              )}
-              {onCooldown && (
-                <span style={{ fontSize: 8, color: '#ff6666', position: 'absolute', bottom: 1 }}>
-                  {cooldown.toFixed(1)}
+                <span style={{ fontSize: 11 }}>
+                  {getSpellIcon(spellId)}
                 </span>
               )}
             </div>
           );
         })}
       </div>
+
+      {/* Hint when no spells */}
+      {spellSlots.length === 0 && (
+        <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.25)', marginTop: 2 }}>
+          Kill enemies for spell drops
+        </span>
+      )}
 
       {/* Survival wave info */}
       {survivalWave !== null && (

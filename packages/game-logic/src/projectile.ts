@@ -11,6 +11,7 @@ import {
   PROJECTILE_LIFETIME,
   PROJECTILE_KNOCKBACK,
   FIREBALL_KNOCKBACK,
+  ICE_LANCE_KNOCKBACK,
   PLAYER_RADIUS,
   ENEMY_RADIUS,
   BOSS_RADIUS,
@@ -19,6 +20,7 @@ import {
   ARENA_HALF_WIDTH,
   ARENA_HALF_HEIGHT,
   BURN_DURATION,
+  FREEZE_DURATION,
   KNOCKBACK_SWORD,
 } from '@curious/shared';
 import type { SimWorld } from './simulation';
@@ -141,12 +143,18 @@ function checkPlayerProjectileHits(
   world: SimWorld,
   events: GameEvent[],
 ): boolean {
-  const knockback = proj.isFireball ? FIREBALL_KNOCKBACK : KNOCKBACK_SWORD;
+  const isPiercing = (proj.pierceRemaining ?? 0) > 0;
+  const knockback = proj.isFireball ? FIREBALL_KNOCKBACK
+    : isPiercing ? ICE_LANCE_KNOCKBACK
+    : KNOCKBACK_SWORD;
+  let hitSomething = false;
 
   // Check enemies
   for (const enemy of world.enemies.values()) {
     if (enemy.aiState === 'dying' || enemy.aiState === 'dead') continue;
     if (enemy.iFrameTimer > 0) continue;
+    // Skip already-pierced targets
+    if (isPiercing && proj.piercedIds?.includes(enemy.id)) continue;
 
     const dist = vec2Distance(proj.position, enemy.position);
     if (dist < proj.radius + ENEMY_RADIUS) {
@@ -162,6 +170,13 @@ function checkPlayerProjectileHits(
         applyBuff(enemy.buffs, 'BURN', BURN_DURATION);
         events.push({ type: 'BUFF_APPLIED', entityId: enemy.id, buffType: 'BURN', duration: BURN_DURATION });
         events.push({ type: 'FIREBALL_EXPLOSION', position: { ...proj.position } });
+      }
+
+      // Apply freeze on ice lance hit
+      if (isPiercing) {
+        applyBuff(enemy.buffs, 'FREEZE', FREEZE_DURATION);
+        events.push({ type: 'BUFF_APPLIED', entityId: enemy.id, buffType: 'FREEZE', duration: FREEZE_DURATION });
+        events.push({ type: 'ICE_LANCE_HIT', targetId: enemy.id, position: { ...proj.position } });
       }
 
       events.push({
@@ -184,12 +199,23 @@ function checkPlayerProjectileHits(
         events.push({ type: 'ENTITY_DIED', entityId: enemy.id, entityType: 'enemy' });
       }
 
+      if (isPiercing) {
+        proj.pierceRemaining = (proj.pierceRemaining ?? 1) - 1;
+        if (!proj.piercedIds) proj.piercedIds = [];
+        proj.piercedIds.push(enemy.id);
+        hitSomething = true;
+        if (proj.pierceRemaining! <= 0) return true;
+        continue; // Keep checking more enemies
+      }
+
       return true;
     }
   }
 
   // Check boss
   if (world.boss && world.boss.aiState !== 'dying' && world.boss.aiState !== 'dead' && world.boss.iFrameTimer <= 0) {
+    if (isPiercing && proj.piercedIds?.includes(world.boss.id)) return hitSomething;
+
     const dist = vec2Distance(proj.position, world.boss.position);
     if (dist < proj.radius + BOSS_RADIUS) {
       world.boss.health -= proj.damage;
@@ -201,6 +227,9 @@ function checkPlayerProjectileHits(
 
       if (proj.isFireball) {
         events.push({ type: 'FIREBALL_EXPLOSION', position: { ...proj.position } });
+      }
+      if (isPiercing) {
+        events.push({ type: 'ICE_LANCE_HIT', targetId: world.boss.id, position: { ...proj.position } });
       }
 
       events.push({
@@ -223,9 +252,17 @@ function checkPlayerProjectileHits(
         events.push({ type: 'ENTITY_DIED', entityId: world.boss.id, entityType: 'boss' });
       }
 
+      if (isPiercing) {
+        proj.pierceRemaining = (proj.pierceRemaining ?? 1) - 1;
+        if (!proj.piercedIds) proj.piercedIds = [];
+        proj.piercedIds.push(world.boss.id);
+        if (proj.pierceRemaining! <= 0) return true;
+        return hitSomething;
+      }
+
       return true;
     }
   }
 
-  return false;
+  return hitSomething;
 }

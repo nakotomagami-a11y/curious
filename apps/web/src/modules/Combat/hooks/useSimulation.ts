@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { useAppStore } from '@lib/stores/app-store';
 import { useGameStore } from '@lib/stores/game-store';
 import { useInputStore } from '@lib/stores/input-store';
+import { useStatsStore } from '@lib/stores/stats-store';
 import {
   tickWorld,
   applyPlayerMovement,
@@ -15,6 +16,7 @@ import {
   applyHitToBoss,
   getSpeedMultiplier,
   tryCastSpell,
+  rollCritical,
 } from '@curious/game-logic';
 import {
   PLAYER_SPEED,
@@ -35,10 +37,18 @@ export function useSimulation() {
   const scene = useAppStore((s) => s.scene);
   // Track which enemies have been hit during current attack to avoid multi-hits
   const hitThisAttack = useRef<Set<string>>(new Set());
-  // Spell key debouncing — fire on key-down edge only
-  const spellKeyState = useRef<boolean[]>([false, false, false]);
+  // Spell key debouncing — fire on key-down edge only (9 slots)
+  const spellKeyState = useRef<boolean[]>([false, false, false, false, false, false, false, false, false]);
+  const escWasDown = useRef(false);
 
   useFrame((_, delta) => {
+    // Toggle settings on Escape key edge
+    const escPressed = isKeyDown('Escape');
+    if (escPressed && !escWasDown.current) {
+      useAppStore.getState().toggleSettings();
+    }
+    escWasDown.current = escPressed;
+
     if (scene !== 'combat') return;
 
     // Hitstop micro-freeze: pause simulation briefly on hit
@@ -117,9 +127,9 @@ export function useSimulation() {
             }
           }
 
-          // Spell keys: 1, 2, 3
+          // Spell keys: 1-9 (dynamic spell slots from pickups)
           const aimDir = vec2Length(toTarget) > 1 ? vec2Normalize(toTarget) : { x: 0, z: 1 };
-          for (let slot = 0; slot < 3; slot++) {
+          for (let slot = 0; slot < 9; slot++) {
             const keyCode = `Digit${slot + 1}`;
             const pressed = isKeyDown(keyCode);
             if (pressed && !spellKeyState.current[slot]) {
@@ -147,6 +157,7 @@ export function useSimulation() {
           const store = useGameStore.getState();
 
           // Check enemies
+          let anyCrit = false;
           for (const enemy of world.enemies.values()) {
             if (enemy.aiState === 'dying' || enemy.aiState === 'dead') continue;
             if (hitThisAttack.current.has(enemy.id)) continue;
@@ -158,11 +169,14 @@ export function useSimulation() {
               ENEMY_RADIUS
             )) {
               hitThisAttack.current.add(enemy.id);
-              const damage = randomizeDamage(player.swordDamage, DAMAGE_VARIANCE);
+              const crit = rollCritical(player.position, enemy.position, enemy.rotation, enemy.aiState);
+              const baseDamage = randomizeDamage(player.swordDamage, DAMAGE_VARIANCE);
+              const damage = Math.round(baseDamage * crit.multiplier);
               const events = applyHitToEnemy(enemy, damage, player.position);
               world.events.push(...events);
               store.addHitSpark(enemy.position.x, enemy.position.z);
-              store.addDamageNumber(enemy.position.x, enemy.position.z, damage);
+              store.addDamageNumber(enemy.position.x, enemy.position.z, damage, crit.isCrit);
+              if (crit.isCrit) anyCrit = true;
               hitLanded = true;
             }
           }
@@ -177,19 +191,22 @@ export function useSimulation() {
               BOSS_RADIUS
             )) {
               hitThisAttack.current.add(world.boss.id);
-              const damage = randomizeDamage(player.swordDamage, DAMAGE_VARIANCE);
+              const crit = rollCritical(player.position, world.boss.position, world.boss.rotation, world.boss.aiState);
+              const baseDamage = randomizeDamage(player.swordDamage, DAMAGE_VARIANCE);
+              const damage = Math.round(baseDamage * crit.multiplier);
               const events = applyHitToBoss(world.boss, damage, player.position);
               world.events.push(...events);
               store.addHitSpark(world.boss.position.x, world.boss.position.z, true);
-              store.addDamageNumber(world.boss.position.x, world.boss.position.z, damage);
+              store.addDamageNumber(world.boss.position.x, world.boss.position.z, damage, crit.isCrit);
+              if (crit.isCrit) anyCrit = true;
               hitLanded = true;
             }
           }
 
-          // Camera shake + hitstop on hit
+          // Camera shake + hitstop on hit (amplified on crit)
           if (hitLanded) {
-            store.setCameraShake(0.9);
-            store.setHitstopTimer(0.05);
+            store.setCameraShake(anyCrit ? 1.4 : 0.9);
+            store.setHitstopTimer(anyCrit ? 0.08 : 0.05);
           }
         }
       }
@@ -218,6 +235,13 @@ export function useSimulation() {
         store.addHitSpark(event.position.x, event.position.z);
         store.setCameraShake(0.6);
       }
+    }
+
+    // Track combat stats
+    const statsStore = useStatsStore.getState();
+    statsStore.updateTimeSurvived(dt);
+    for (const event of world.events) {
+      statsStore.processEvent(event);
     }
 
     // Check if local player death animation finished
@@ -250,6 +274,20 @@ export function useSimulation() {
     store.setProjectiles(projectiles);
 
     store.setBoss(world.boss ? { ...world.boss } : null);
+
+    // Sync spell drops
+    const spellDrops: Record<string, any> = {};
+    for (const [id, d] of world.spellDrops) {
+      spellDrops[id] = d;
+    }
+    store.setSpellDrops(spellDrops);
+
+    // Sync zones
+    const zones: Record<string, any> = {};
+    for (const [id, z] of world.zones) {
+      zones[id] = z;
+    }
+    store.setZones(zones);
 
     // Sync survival state
     if (world.survival) {

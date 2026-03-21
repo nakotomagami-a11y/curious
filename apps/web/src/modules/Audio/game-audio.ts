@@ -12,7 +12,20 @@ import {
   playDeath,
   playBossTelegraph,
   playBossSlam,
+  playIceLance,
+  playLightningChain,
+  playHealCircle,
+  playShieldBubble,
+  playGravityWell,
+  playBlockShield,
+  playShieldBlock,
+  playCriticalHit,
+  playSpellPickup,
+  playWaveComplete,
+  playComboHit,
 } from './sounds';
+
+let lastComboIndex = 0;
 
 /**
  * Process game events and trigger corresponding sounds.
@@ -26,14 +39,18 @@ export function processAudioEvents(
     switch (event.type) {
       case 'ATTACK_START':
         playSlash();
+        lastComboIndex = event.comboIndex;
         break;
 
       case 'ATTACK_HIT':
-        playHit();
+        if (event.isCritical) {
+          playCriticalHit();
+        } else {
+          playComboHit(lastComboIndex);
+        }
         break;
 
       case 'DAMAGE_TAKEN':
-        // Only play hurt sound for the local player
         if (event.entityId === localPlayerId) {
           playHurt();
         }
@@ -49,6 +66,32 @@ export function processAudioEvents(
 
       case 'BOSS_SLAM':
         playBossSlam();
+        break;
+
+      case 'SPELL_CAST':
+        switch (event.spellId) {
+          case 'fireball': break; // Fireball uses the default slash-like sound
+          case 'ice_lance': playIceLance(); break;
+          case 'lightning_chain': playLightningChain(); break;
+          case 'heal_circle': playHealCircle(); break;
+          case 'shield_bubble': playShieldBubble(); break;
+          case 'gravity_well': playGravityWell(); break;
+          case 'block_shield': playBlockShield(); break;
+        }
+        break;
+
+      case 'SHIELD_BLOCK':
+        playShieldBlock();
+        break;
+
+      case 'SPELL_PICKED_UP':
+        if (event.playerId === localPlayerId) {
+          playSpellPickup();
+        }
+        break;
+
+      case 'WAVE_COMPLETE':
+        playWaveComplete();
         break;
     }
   }

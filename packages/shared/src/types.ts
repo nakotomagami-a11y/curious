@@ -3,33 +3,43 @@ export type Vec2 = { x: number; z: number };
 export type EntityId = string;
 
 // --- App State ---
-export type AppScene = 'booting' | 'landing' | 'mode-select' | 'joining' | 'combat' | 'dead';
-export type GameMode = 'dev-playground' | 'survival';
+export type AppScene = 'booting' | 'landing' | 'mode-select' | 'lobby' | 'joining' | 'combat' | 'dead';
+export type GameMode = 'dev-playground' | 'survival' | 'coop-survival';
 
 // --- Entity States ---
 export type PlayerState = 'alive' | 'dying' | 'dead';
-export type EnemyType = 'melee' | 'caster' | 'dasher';
-export type EnemyAIState = 'idle' | 'chasing' | 'attacking' | 'telegraphing' | 'dashing' | 'recovering' | 'dying' | 'dead';
+export type EnemyType = 'melee' | 'caster' | 'dasher' | 'shielder' | 'summoner' | 'bomber' | 'teleporter' | 'healer';
+export type EliteModifier = 'vampiric' | 'thorns' | 'haste' | 'giant' | 'shielded' | 'berserker';
+export type EnemyAIState =
+  | 'idle' | 'chasing' | 'attacking' | 'telegraphing' | 'dashing' | 'recovering'
+  | 'summoning' | 'exploding' | 'blinking' | 'healing'
+  | 'dying' | 'dead';
 export type BossAIState =
-  | 'idle'
-  | 'chasing'
-  | 'telegraphing'
-  | 'jumping'
-  | 'slamming'
-  | 'recovering'
-  | 'dying'
-  | 'dead';
+  | 'idle' | 'chasing' | 'telegraphing' | 'jumping' | 'slamming' | 'recovering'
+  | 'casting' | 'summoning_pillars' | 'bullet_pattern'
+  | 'dying' | 'dead';
+export type BossType = 'guardian' | 'hydra' | 'mage';
+export type BossPhase = 1 | 2 | 3;
 
 // --- Buffs ---
-export type BuffType = 'SPEED_BOOST' | 'BURN';
+export type BuffType = 'SPEED_BOOST' | 'BURN' | 'FREEZE' | 'BLOCK_SHIELD';
 export type BuffInstance = {
   type: BuffType;
   duration: number;
   tickTimer: number;
+  /** For BLOCK_SHIELD: remaining absorption HP */
+  absorb?: number;
 };
 
 // --- Spells ---
-export type SpellId = 'fireball';
+export type SpellId =
+  | 'fireball'
+  | 'ice_lance'
+  | 'lightning_chain'
+  | 'heal_circle'
+  | 'shield_bubble'
+  | 'gravity_well'
+  | 'block_shield';
 export type ProjectileOwnerType = 'enemy' | 'player';
 
 // --- Attack ---
@@ -37,6 +47,27 @@ export type AttackState = {
   comboIndex: number; // 0 = left-to-right, 1 = right-to-left
   progress: number; // 0..1 through slash arc
   startTime: number;
+};
+
+// --- Spell Drops ---
+export type SpellDropSnapshot = {
+  id: EntityId;
+  spellId: SpellId;
+  position: Vec2;
+  lifetime: number;
+};
+
+// --- Zones (heal circle, shield bubble, gravity well) ---
+export type ZoneType = 'heal' | 'shield_bubble' | 'gravity_well';
+export type ZoneSnapshot = {
+  id: EntityId;
+  ownerId: EntityId;
+  zoneType: ZoneType;
+  position: Vec2;
+  radius: number;
+  duration: number;
+  /** Remaining absorption HP for shield_bubble */
+  absorb?: number;
 };
 
 // --- Entity Snapshots ---
@@ -67,6 +98,8 @@ export type PlayerSnapshot = {
   dashCooldownTimer: number;
   dashDirection: Vec2;
   buffs: BuffInstance[];
+  /** Dynamic spell inventory — each entry is a single-use spell pickup (max 9) */
+  spellSlots: SpellId[];
   spellCooldowns: Partial<Record<SpellId, number>>;
   castingSpell: SpellId | null;
   castProgress: number;
@@ -75,6 +108,7 @@ export type PlayerSnapshot = {
 export type EnemySnapshot = {
   id: EntityId;
   enemyType: EnemyType;
+  eliteModifiers: EliteModifier[];
   position: Vec2;
   rotation: number;
   health: number;
@@ -108,10 +142,17 @@ export type ProjectileSnapshot = {
   damage: number;
   lifetime: number;
   isFireball: boolean;
+  /** For ice lance: how many enemies it can still pierce through */
+  pierceRemaining?: number;
+  /** Track which entities this piercing projectile already hit */
+  piercedIds?: string[];
 };
 
 export type BossSnapshot = {
   id: EntityId;
+  bossType: BossType;
+  phase: BossPhase;
+  rageMode: boolean;
   position: Vec2;
   rotation: number;
   health: number;
@@ -135,6 +176,28 @@ export type PlayerInput = {
   aimAngle: number;
   attacking: boolean;
   timestamp: number;
+};
+
+// --- Combat Stats ---
+export type CombatStats = {
+  damageDealt: number;
+  damageTaken: number;
+  enemiesKilled: number;
+  bossesKilled: number;
+  spellsCast: number;
+  criticalHits: number;
+  highestCombo: number;
+  timeSurvived: number;
+  wavesCleared: number;
+  elitesKilled: number;
+};
+
+export type LeaderboardEntry = {
+  playerName: string;
+  score: number;
+  wavesCleared: number;
+  timeSurvived: number;
+  date: string;
 };
 
 // --- Session ---

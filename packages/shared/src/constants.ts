@@ -81,6 +81,72 @@ export const DASHER_DESIRED_DISTANCE = 200;
 export const DASHER_ATTACK_RANGE = 400;
 export const DASHER_SPAWN_CHANCE = 0.15;
 
+// --- Shielder Enemy ---
+export const SHIELDER_SPEED = 100;
+export const SHIELDER_MAX_HEALTH = 100;
+export const SHIELDER_AGGRO_RANGE = 450;
+export const SHIELDER_LEASH_RANGE = 650;
+export const SHIELDER_ATTACK_RANGE = 60;
+export const SHIELDER_ATTACK_COOLDOWN = 1.5;
+export const SHIELDER_PUNCH_DAMAGE = 8;
+export const SHIELDER_PUNCH_DURATION = 0.5;
+export const SHIELDER_SHIELD_ARC = (120 * Math.PI) / 180; // 120° frontal arc
+export const SHIELDER_SHIELD_DROP_DURATION = 0.5; // drops shield when attacking
+export const SHIELDER_SPAWN_CHANCE = 0.10;
+
+// --- Summoner Enemy ---
+export const SUMMONER_SPEED = 80;
+export const SUMMONER_MAX_HEALTH = 40;
+export const SUMMONER_AGGRO_RANGE = 600;
+export const SUMMONER_LEASH_RANGE = 800;
+export const SUMMONER_DESIRED_DISTANCE = 400;
+export const SUMMONER_SUMMON_COOLDOWN = 6.0;
+export const SUMMONER_SUMMON_DURATION = 1.0;
+export const SUMMONER_MAX_MINIONS = 4;
+export const SUMMONER_MINION_HEALTH = 20;
+export const SUMMONER_MINION_SPEED = 200;
+export const SUMMONER_MINION_DAMAGE = 3;
+export const SUMMONER_MINION_LIFETIME = 8.0;
+export const SUMMONER_SPAWN_CHANCE = 0.08;
+
+// --- Bomber Enemy ---
+export const BOMBER_SPEED = 180;
+export const BOMBER_MAX_HEALTH = 30;
+export const BOMBER_AGGRO_RANGE = 500;
+export const BOMBER_LEASH_RANGE = 700;
+export const BOMBER_EXPLODE_RADIUS = 80;
+export const BOMBER_EXPLODE_DAMAGE = 25;
+export const BOMBER_FUSE_TIME = 5.0; // explodes after this long near player
+export const BOMBER_PROXIMITY_RANGE = 50; // distance to trigger fuse
+export const BOMBER_SPAWN_CHANCE = 0.08;
+
+// --- Teleporter Enemy ---
+export const TELEPORTER_SPEED = 130;
+export const TELEPORTER_MAX_HEALTH = 45;
+export const TELEPORTER_AGGRO_RANGE = 500;
+export const TELEPORTER_LEASH_RANGE = 700;
+export const TELEPORTER_BLINK_RANGE = 200;
+export const TELEPORTER_BLINK_COOLDOWN = 3.0;
+export const TELEPORTER_BLINK_TELEGRAPH = 0.3;
+export const TELEPORTER_ATTACK_RANGE = 50;
+export const TELEPORTER_ATTACK_COOLDOWN = 1.0;
+export const TELEPORTER_PUNCH_DAMAGE = 10;
+export const TELEPORTER_PUNCH_DURATION = 0.3;
+export const TELEPORTER_SPAWN_CHANCE = 0.08;
+
+// --- Healer Enemy ---
+export const HEALER_SPEED = 110;
+export const HEALER_MAX_HEALTH = 55;
+export const HEALER_AGGRO_RANGE = 550;
+export const HEALER_LEASH_RANGE = 750;
+export const HEALER_HEAL_RANGE = 200;
+export const HEALER_HEAL_RATE = 5; // HP per second
+export const HEALER_HEAL_DURATION = 2.0;
+export const HEALER_HEAL_COOLDOWN = 3.0;
+export const HEALER_FLEE_DISTANCE = 150;
+export const HEALER_DESIRED_DISTANCE = 250;
+export const HEALER_SPAWN_CHANCE = 0.06;
+
 // --- Projectile ---
 export const PROJECTILE_SPEED = 400;
 export const PROJECTILE_RADIUS = 10;
@@ -97,12 +163,60 @@ export const FIREBALL_DAMAGE = 20;
 export const FIREBALL_LIFETIME = 4.0;
 export const FIREBALL_KNOCKBACK = 100;
 
+export const ICE_LANCE_MANA_COST = 15;
+export const ICE_LANCE_COOLDOWN = 3.0;
+export const ICE_LANCE_SPEED = 600;
+export const ICE_LANCE_RADIUS = 10;
+export const ICE_LANCE_DAMAGE = 25;
+export const ICE_LANCE_LIFETIME = 3.0;
+export const ICE_LANCE_KNOCKBACK = 60;
+export const ICE_LANCE_MAX_PIERCE = 3;
+
+export const LIGHTNING_CHAIN_MANA_COST = 30;
+export const LIGHTNING_CHAIN_COOLDOWN = 5.0;
+export const LIGHTNING_CHAIN_DAMAGE = 15;
+export const LIGHTNING_CHAIN_BOUNCES = 3;
+export const LIGHTNING_CHAIN_RANGE = 150;
+
+export const HEAL_CIRCLE_MANA_COST = 20;
+export const HEAL_CIRCLE_COOLDOWN = 8.0;
+export const HEAL_CIRCLE_RADIUS = 120;
+export const HEAL_CIRCLE_HEAL_TOTAL = 30;
+export const HEAL_CIRCLE_DURATION = 3.0;
+
+export const SHIELD_BUBBLE_MANA_COST = 25;
+export const SHIELD_BUBBLE_COOLDOWN = 10.0;
+export const SHIELD_BUBBLE_RADIUS = 80;
+export const SHIELD_BUBBLE_DURATION = 3.0;
+export const SHIELD_BUBBLE_ABSORB = 50;
+
+export const GRAVITY_WELL_MANA_COST = 35;
+export const GRAVITY_WELL_COOLDOWN = 12.0;
+export const GRAVITY_WELL_RADIUS = 200;
+export const GRAVITY_WELL_DURATION = 3.0;
+export const GRAVITY_WELL_DPS = 5;
+export const GRAVITY_WELL_PULL_FORCE = 200;
+
+export const BLOCK_SHIELD_MANA_COST = 15;
+export const BLOCK_SHIELD_COOLDOWN = 6.0;
+export const BLOCK_SHIELD_DURATION = 1.5;
+export const BLOCK_SHIELD_ABSORB = 40;
+export const BLOCK_SHIELD_REFLECT_DAMAGE = 10;
+
+// --- Spell Drops ---
+export const SPELL_DROP_CHANCE = 0.20;
+export const SPELL_DROP_LIFETIME = 30.0;
+export const SPELL_DROP_PICKUP_RANGE = 40;
+export const MAX_SPELL_SLOTS = 9;
+
 // --- Buffs/Debuffs ---
 export const SPEED_BOOST_MULTIPLIER = 1.5;
 export const SPEED_BOOST_DURATION = 2.0;
 export const BURN_DPS = 3;
 export const BURN_DURATION = 3.0;
 export const BURN_TICK_INTERVAL = 0.5;
+export const FREEZE_SPEED_MULTIPLIER = 0.5;
+export const FREEZE_DURATION = 2.0;
 
 // --- Survival Mode ---
 export const SURVIVAL_BASE_ENEMY_COUNT = 4;
@@ -127,6 +241,33 @@ export const BOSS_SLAM_DAMAGE = 3.5;
 export const BOSS_SLAM_COOLDOWN = 3.0; // seconds between slams
 export const BOSS_RECOVERY_DURATION = 1.5;
 export const BOSS_RESPAWN_DELAY = 10; // seconds
+
+// --- Boss Phases ---
+export const BOSS_PHASE_2_THRESHOLD = 0.50; // 50% HP
+export const BOSS_PHASE_3_THRESHOLD = 0.25; // 25% HP
+export const BOSS_RAGE_THRESHOLD = 0.20; // 20% HP
+export const BOSS_RAGE_SPEED_MULT = 1.5;
+export const BOSS_RAGE_DAMAGE_MULT = 1.3;
+
+// --- Hydra Boss ---
+export const HYDRA_MAX_HEALTH = 500;
+export const HYDRA_SPEED = 80;
+export const HYDRA_RADIUS = 50;
+export const HYDRA_HEAD_COUNT = 3;
+export const HYDRA_ATTACK_COOLDOWN = 2.0;
+export const HYDRA_BITE_DAMAGE = 12;
+export const HYDRA_BITE_RANGE = 120;
+
+// --- Mage Boss ---
+export const MAGE_BOSS_MAX_HEALTH = 400;
+export const MAGE_BOSS_SPEED = 60;
+export const MAGE_BOSS_RADIUS = 40;
+export const MAGE_BOSS_TELEPORT_COOLDOWN = 5.0;
+export const MAGE_BOSS_TELEPORT_RANGE = 300;
+export const MAGE_BOSS_PROJECTILE_DAMAGE = 10;
+export const MAGE_BOSS_PROJECTILE_SPEED = 350;
+export const MAGE_BOSS_PATTERN_COOLDOWN = 8.0;
+export const MAGE_BOSS_PATTERN_COUNT = 12; // projectiles in a burst
 
 // --- Knockback ---
 export const KNOCKBACK_SWORD = 80;
@@ -154,6 +295,27 @@ export const HIT_FLASH_DURATION = 0.15; // seconds
 export const DASH_SPEED = 630; // units/sec (~2.1x PLAYER_SPEED)
 export const DASH_DURATION = 0.15; // seconds — very short burst
 export const DASH_COOLDOWN = 4.0; // seconds between dashes
+
+// --- Elite Enemies ---
+export const ELITE_SPAWN_CHANCE = 0.15;
+export const ELITE_VAMPIRIC_HEAL_PCT = 0.20; // heals 20% of damage dealt
+export const ELITE_THORNS_REFLECT_PCT = 0.30; // reflects 30% damage
+export const ELITE_HASTE_SPEED_MULT = 2.0;
+export const ELITE_HASTE_ATTACK_MULT = 0.5; // cooldown halved
+export const ELITE_GIANT_SCALE = 1.8;
+export const ELITE_GIANT_HP_MULT = 2.0;
+export const ELITE_GIANT_DAMAGE_MULT = 1.5;
+export const ELITE_GIANT_SPEED_MULT = 0.7;
+export const ELITE_SHIELDED_FRONT_REDUCTION = 0.5; // 50% damage from front
+export const ELITE_BERSERKER_THRESHOLD = 0.3; // triggers below 30% HP
+export const ELITE_BERSERKER_DAMAGE_MULT = 2.0;
+export const ELITE_BERSERKER_SPEED_MULT = 1.5;
+
+// --- Critical Hits ---
+export const CRIT_CHANCE = 0.15; // 15% base
+export const CRIT_MULTIPLIER = 2.0;
+export const BACKSTAB_CRIT_BONUS = 0.30; // +30% when hitting from behind
+export const TELEGRAPH_CRIT_BONUS = 1.0; // guaranteed crit during telegraph
 
 // --- Damage ---
 export const DAMAGE_VARIANCE = 0.2; // ±20% of base damage

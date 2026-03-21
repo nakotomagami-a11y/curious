@@ -2,8 +2,8 @@ import { useRef, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Billboard } from "@react-three/drei";
 import * as THREE from "three";
-import type { EnemySnapshot } from "@curious/shared";
-import { ENEMY_RADIUS } from "@curious/shared";
+import type { EnemySnapshot, EliteModifier } from "@curious/shared";
+import { ENEMY_RADIUS, ELITE_GIANT_SCALE } from "@curious/shared";
 import { vec2Angle } from "@curious/shared";
 import "@modules/Effects/materials/dissolve-material";
 import { DeathParticles } from "@modules/Effects/components/DeathParticles";
@@ -36,6 +36,51 @@ const SQUASH_RETURN_SPEED = 10;
 const TRAIL_HOLD = 0.05;           // brief pause before shrink (seconds)
 const TRAIL_SHRINK_DURATION = 0.25; // fixed catch-up duration (seconds)
 
+function getEliteRingColor(modifiers: EliteModifier[]): string {
+  // Use primary modifier for color
+  const primary = modifiers[0];
+  switch (primary) {
+    case 'vampiric': return '#cc2222';
+    case 'thorns': return '#8833cc';
+    case 'haste': return '#2288ff';
+    case 'giant': return '#88aa44';
+    case 'shielded': return '#ffcc22';
+    case 'berserker': return '#ff6600';
+    default: return '#ff44ff';
+  }
+}
+
+function EliteRing({ modifiers, healthPct }: { modifiers: EliteModifier[]; healthPct: number }) {
+  const ringRef = useRef<THREE.Mesh>(null);
+  const color = getEliteRingColor(modifiers);
+  const isBerserkerLow = modifiers.includes('berserker') && healthPct < 0.3;
+
+  useFrame(({ clock }) => {
+    if (!ringRef.current) return;
+    ringRef.current.rotation.z = clock.elapsedTime * 0.8;
+    const mat = ringRef.current.material as THREE.MeshBasicMaterial;
+    const pulse = 0.3 + Math.sin(clock.elapsedTime * 3) * 0.1;
+    mat.opacity = isBerserkerLow ? 0.6 + Math.sin(clock.elapsedTime * 6) * 0.2 : pulse;
+  });
+
+  return (
+    <>
+      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.5, 0]}>
+        <ringGeometry args={[ENEMY_RADIUS + 2, ENEMY_RADIUS + 6, 32]} />
+        <meshBasicMaterial color={isBerserkerLow ? '#ff2200' : color} transparent opacity={0.3} />
+      </mesh>
+      {/* Point light for elite glow */}
+      <pointLight
+        position={[0, 5, 0]}
+        color={isBerserkerLow ? '#ff2200' : color}
+        intensity={isBerserkerLow ? 40 : 15}
+        distance={80}
+        decay={2}
+      />
+    </>
+  );
+}
+
 export function EnemyRig({ snapshot }: Props) {
   const bodyRef = useRef<THREE.Mesh>(null);
   const leftHandRef = useRef<THREE.Mesh>(null);
@@ -52,6 +97,14 @@ export function EnemyRig({ snapshot }: Props) {
 
   const isCaster = snapshot.enemyType === 'caster';
   const isDasher = snapshot.enemyType === 'dasher';
+  const isShielder = snapshot.enemyType === 'shielder';
+  const isSummoner = snapshot.enemyType === 'summoner';
+  const isBomber = snapshot.enemyType === 'bomber';
+  const isTeleporter = snapshot.enemyType === 'teleporter';
+  const isHealer = snapshot.enemyType === 'healer';
+  const isElite = snapshot.eliteModifiers.length > 0;
+  const isGiant = snapshot.eliteModifiers.includes('giant');
+  const entityScale = isGiant ? ELITE_GIANT_SCALE : 1.0;
   const attacking = snapshot.aiState === "attacking";
   const isBurning = snapshot.buffs?.some(b => b.type === 'BURN') ?? false;
   const progress = snapshot.attackProgress;
@@ -183,27 +236,29 @@ export function EnemyRig({ snapshot }: Props) {
 
   const healthPct = snapshot.health / snapshot.maxHealth;
   const flashing = snapshot.hitFlashTimer > 0;
-  const bodyColor = isCaster
-    ? (flashing ? "#9966ff" : "#6633cc")
-    : isDasher
-    ? (flashing ? "#ffaa33" : "#dd8800")
-    : (flashing ? "#ff6633" : "#ee2233");
-  const handColor = isCaster
-    ? (flashing ? "#bb88ff" : "#8855ee")
-    : isDasher
-    ? (flashing ? "#ffcc55" : "#ffbb44")
-    : (flashing ? "#ff8855" : "#ff4455");
-  const flashEmissive = isCaster
-    ? (flashing ? "#7733ff" : "#000000")
-    : isDasher
-    ? (flashing ? "#ff8800" : "#000000")
-    : (flashing ? "#ff6622" : "#000000");
+
+  // Color palette per enemy type
+  const colorMap: Record<string, { body: [string, string]; hand: [string, string]; emissive: string; edge: string; bar: string; barBg: string; death: string; light: string }> = {
+    melee:      { body: ['#ff6633', '#ee2233'], hand: ['#ff8855', '#ff4455'], emissive: '#ff6622', edge: '#ff6633', bar: '#cc3333', barBg: '#331111', death: '#cc4444', light: '#ff7733' },
+    caster:     { body: ['#9966ff', '#6633cc'], hand: ['#bb88ff', '#8855ee'], emissive: '#7733ff', edge: '#9966ff', bar: '#7733cc', barBg: '#221133', death: '#8844cc', light: '#9955ff' },
+    dasher:     { body: ['#ffaa33', '#dd8800'], hand: ['#ffcc55', '#ffbb44'], emissive: '#ff8800', edge: '#ff8800', bar: '#cc8800', barBg: '#332200', death: '#cc8844', light: '#ff9922' },
+    shielder:   { body: ['#aabbcc', '#667788'], hand: ['#bbccdd', '#8899aa'], emissive: '#88aacc', edge: '#aabbcc', bar: '#668899', barBg: '#223344', death: '#8899aa', light: '#88aacc' },
+    summoner:   { body: ['#8833aa', '#551177'], hand: ['#aa55cc', '#7733aa'], emissive: '#7722aa', edge: '#8833aa', bar: '#662299', barBg: '#220044', death: '#7733aa', light: '#8833cc' },
+    bomber:     { body: ['#ff4422', '#cc2200'], hand: ['#ff6644', '#ee4422'], emissive: '#ff3300', edge: '#ff4422', bar: '#cc2200', barBg: '#440000', death: '#ff4422', light: '#ff4400' },
+    teleporter: { body: ['#33dddd', '#119999'], hand: ['#55eeff', '#33ccdd'], emissive: '#22cccc', edge: '#33dddd', bar: '#22aaaa', barBg: '#003333', death: '#33cccc', light: '#33ddee' },
+    healer:     { body: ['#44dd66', '#229944'], hand: ['#66ee88', '#44cc66'], emissive: '#33cc55', edge: '#44dd66', bar: '#33aa55', barBg: '#003311', death: '#44cc66', light: '#44ee66' },
+  };
+  const c = colorMap[snapshot.enemyType] ?? colorMap.melee;
+
+  const bodyColor = flashing ? c.body[0] : c.body[1];
+  const handColor = flashing ? c.hand[0] : c.hand[1];
+  const flashEmissive = flashing ? c.emissive : '#000000';
   const flashIntensity = flashing ? 1.8 : 0;
-  const edgeColor = isCaster ? "#9966ff" : isDasher ? "#ff8800" : "#ff6633";
-  const healthBarColor = isCaster ? "#7733cc" : isDasher ? "#cc8800" : "#cc3333";
-  const healthBarBg = isCaster ? "#221133" : isDasher ? "#332200" : "#331111";
-  const deathParticleColor = isCaster ? "#8844cc" : isDasher ? "#cc8844" : "#cc4444";
-  const flashLightColor = isCaster ? "#9955ff" : isDasher ? "#ff9922" : "#ff7733";
+  const edgeColor = c.edge;
+  const healthBarColor = c.bar;
+  const healthBarBg = c.barBg;
+  const deathParticleColor = c.death;
+  const flashLightColor = c.light;
 
   // Hide if dead
   if (snapshot.aiState === "dead") return null;
@@ -212,7 +267,12 @@ export function EnemyRig({ snapshot }: Props) {
   const dissolveProgress = dissolving ? snapshot.dissolveProgress : 0;
 
   return (
-    <group position={[snapshot.position.x, 0, snapshot.position.z]}>
+    <group position={[snapshot.position.x, 0, snapshot.position.z]} scale={[entityScale, entityScale, entityScale]}>
+      {/* Elite ground ring — glowing colored ring */}
+      {isElite && !dissolving && (
+        <EliteRing modifiers={snapshot.eliteModifiers} healthPct={healthPct} />
+      )}
+
       {/* Death particles — burst during dissolve */}
       {dissolving && (
         <DeathParticles position={[0, 0, 0]} color={deathParticleColor} count={20} />

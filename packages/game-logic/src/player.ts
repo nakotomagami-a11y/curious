@@ -40,6 +40,7 @@ export function createPlayer(id: EntityId, name: string, position?: Vec2): Playe
     dashCooldownTimer: 0,
     dashDirection: Vec2Zero,
     buffs: [],
+    spellSlots: [],
     spellCooldowns: {},
     castingSpell: null,
     castProgress: 0,

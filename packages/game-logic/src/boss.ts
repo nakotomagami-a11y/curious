@@ -1,14 +1,21 @@
-import type { EntityId, BossSnapshot, Vec2 } from '@curious/shared';
+import type { EntityId, BossSnapshot, BossType, Vec2 } from '@curious/shared';
 import { vec2, Vec2Zero } from '@curious/shared';
-import { BOSS_MAX_HEALTH } from '@curious/shared';
+import { BOSS_MAX_HEALTH, HYDRA_MAX_HEALTH, MAGE_BOSS_MAX_HEALTH } from '@curious/shared';
 
-export function createBoss(id: EntityId, position?: Vec2): BossSnapshot {
+export function createBoss(id: EntityId, position?: Vec2, bossType: BossType = 'guardian'): BossSnapshot {
+  const maxHealth = bossType === 'hydra' ? HYDRA_MAX_HEALTH
+    : bossType === 'mage' ? MAGE_BOSS_MAX_HEALTH
+    : BOSS_MAX_HEALTH;
+
   return {
     id,
+    bossType,
+    phase: 1,
+    rageMode: false,
     position: position ?? vec2(0, 0),
     rotation: 0,
-    health: BOSS_MAX_HEALTH,
-    maxHealth: BOSS_MAX_HEALTH,
+    health: maxHealth,
+    maxHealth,
     aiState: 'idle',
     slamTargetPosition: null,
     slamProgress: 0,

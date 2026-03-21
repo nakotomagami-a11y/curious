@@ -5,6 +5,11 @@ import {
   ENEMY_RESPAWN_DELAY,
   CASTER_SPAWN_CHANCE,
   DASHER_SPAWN_CHANCE,
+  SHIELDER_SPAWN_CHANCE,
+  SUMMONER_SPAWN_CHANCE,
+  BOMBER_SPAWN_CHANCE,
+  TELEPORTER_SPAWN_CHANCE,
+  HEALER_SPAWN_CHANCE,
   ARENA_HALF_WIDTH,
   ARENA_HALF_HEIGHT,
   PLAYER_RADIUS,
@@ -63,8 +68,15 @@ export function tickSpawner(world: SimWorld, dt: number): void {
   while (aliveCount < ENEMY_ACTIVE_COUNT && world.enemies.size < ENEMY_ACTIVE_COUNT) {
     const pos = findSpawnPosition(world);
     const roll = Math.random();
-    const type: EnemyType = roll < DASHER_SPAWN_CHANCE ? 'dasher'
-      : roll < DASHER_SPAWN_CHANCE + CASTER_SPAWN_CHANCE ? 'caster'
+    let cumulative = 0;
+    const type: EnemyType =
+      (cumulative += DASHER_SPAWN_CHANCE, roll < cumulative) ? 'dasher'
+      : (cumulative += CASTER_SPAWN_CHANCE, roll < cumulative) ? 'caster'
+      : (cumulative += SHIELDER_SPAWN_CHANCE, roll < cumulative) ? 'shielder'
+      : (cumulative += SUMMONER_SPAWN_CHANCE, roll < cumulative) ? 'summoner'
+      : (cumulative += BOMBER_SPAWN_CHANCE, roll < cumulative) ? 'bomber'
+      : (cumulative += TELEPORTER_SPAWN_CHANCE, roll < cumulative) ? 'teleporter'
+      : (cumulative += HEALER_SPAWN_CHANCE, roll < cumulative) ? 'healer'
       : 'melee';
     const enemy = createEnemy(generateEntityId('enemy'), pos, pos, type);
     world.enemies.set(enemy.id, enemy);
