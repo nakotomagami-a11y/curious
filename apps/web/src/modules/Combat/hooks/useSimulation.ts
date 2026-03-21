@@ -284,16 +284,22 @@ export function useSimulation() {
       }
     }
 
+    // Capture pre-tick events (spell casts, sword hits) before tickWorld clears them
+    const preTrickEvents = [...world.events];
+
     tickWorld(world, dt);
+
+    // Merge pre-tick events with events generated during tick
+    const allEvents = [...preTrickEvents, ...world.events];
 
     // Ensure audio context is initialized (requires prior user gesture)
     initAudio();
 
     // Process audio events
-    processAudioEvents(world.events, localPlayerId);
+    processAudioEvents(allEvents, localPlayerId);
 
     // Camera shake from world events
-    for (const event of world.events) {
+    for (const event of allEvents) {
       if (event.type === 'BOSS_SLAM') {
         useGameStore.getState().setCameraShake(1.5); // heavy shake
       }
@@ -334,7 +340,7 @@ export function useSimulation() {
     // Track combat stats
     const statsStore = useStatsStore.getState();
     statsStore.updateTimeSurvived(dt);
-    for (const event of world.events) {
+    for (const event of allEvents) {
       statsStore.processEvent(event);
     }
 
