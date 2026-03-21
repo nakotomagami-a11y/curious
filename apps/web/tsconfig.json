@@ -26,6 +26,12 @@
       "@/*": [
         "./src/*"
       ],
+      "@modules/*": [
+        "./src/modules/*"
+      ],
+      "@lib/*": [
+        "./src/lib/*"
+      ],
       "@curious/shared": [
         "../../packages/shared/src"
       ],

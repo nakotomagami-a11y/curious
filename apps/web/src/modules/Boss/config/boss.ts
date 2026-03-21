@@ -1,0 +1,18 @@
+// Boss configuration
+// Re-exports from shared constants for module-local access
+
+export {
+  BOSS_SCALE,
+  BOSS_RADIUS,
+  BOSS_SPEED,
+  BOSS_MAX_HEALTH,
+  BOSS_AGGRO_RANGE,
+  BOSS_SLAM_TRIGGER_RANGE,
+  BOSS_TELEGRAPH_DURATION,
+  BOSS_JUMP_DURATION,
+  BOSS_SLAM_RADIUS,
+  BOSS_SLAM_DAMAGE,
+  BOSS_SLAM_COOLDOWN,
+  BOSS_RECOVERY_DURATION,
+  BOSS_RESPAWN_DELAY,
+} from '@curious/shared';

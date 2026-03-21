@@ -1,6 +1,6 @@
 'use client';
 
-import { Game } from '@/game/Game';
+import { Game } from '@modules/World/components/GameScene';
 
 export default function Page() {
   return <Game />;
