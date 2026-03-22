@@ -96,11 +96,31 @@ function getSpawnPositions(
     }
   }
 
-  // Fallback: if no interior tiles found (small room), use all tiles
+  // Fallback: if no interior tiles with distance, relax the distance constraint
+  if (tileCenters.length === 0) {
+    for (const key of tileSet) {
+      const [c, r] = key.split(',').map(Number);
+      const isInterior =
+        tileSet.has(`${c - 1},${r}`) && tileSet.has(`${c + 1},${r}`) &&
+        tileSet.has(`${c},${r - 1}`) && tileSet.has(`${c},${r + 1}`);
+      if (!isInterior) continue;
+      tileCenters.push(tileToWorld(c, r, tileSize));
+    }
+  }
+
+  // Last resort: use edge tiles but offset inward (avoid wall overlap)
   if (tileCenters.length === 0) {
     for (const key of tileSet) {
       const [c, r] = key.split(',').map(Number);
       const pos = tileToWorld(c, r, tileSize);
+      // Push position toward room center to avoid wall overlap
+      const toCenterX = room.center.x - pos.x;
+      const toCenterZ = room.center.z - pos.z;
+      const d = Math.sqrt(toCenterX * toCenterX + toCenterZ * toCenterZ);
+      if (d > 1) {
+        pos.x += (toCenterX / d) * 35; // push 35 units inward (enemy radius + margin)
+        pos.z += (toCenterZ / d) * 35;
+      }
       tileCenters.push(pos);
     }
   }

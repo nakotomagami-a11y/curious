@@ -25,6 +25,7 @@ import {
 } from '@curious/shared';
 import type { SimWorld } from '../simulation';
 import { applyBuff, checkBlockShield } from '../entities/buffs';
+import { circleVsWallSegment } from '../dungeon/wall-collision';
 
 export function createProjectile(
   id: EntityId,
@@ -62,13 +63,42 @@ export function tickProjectiles(world: SimWorld, dt: number): GameEvent[] {
       continue;
     }
 
-    // Out of bounds
-    if (
-      Math.abs(proj.position.x) > ARENA_HALF_WIDTH + 50 ||
-      Math.abs(proj.position.z) > ARENA_HALF_HEIGHT + 50
-    ) {
-      toRemove.push(proj.id);
-      continue;
+    // Out of bounds (skip in dungeon mode — walls handle containment)
+    if (!world.dungeon) {
+      if (
+        Math.abs(proj.position.x) > ARENA_HALF_WIDTH + 50 ||
+        Math.abs(proj.position.z) > ARENA_HALF_HEIGHT + 50
+      ) {
+        toRemove.push(proj.id);
+        continue;
+      }
+    }
+
+    // Wall collision — destroy projectile on contact (dungeon mode)
+    if (world.dungeon) {
+      let hitWall = false;
+      for (const wall of world.dungeon.walls) {
+        if (circleVsWallSegment(proj.position, proj.radius, wall)) {
+          hitWall = true;
+          break;
+        }
+      }
+      // Also check locked door walls
+      if (!hitWall && world.dungeonState) {
+        for (const [doorId, doorState] of Object.entries(world.dungeonState.doorStates)) {
+          if (doorState === 'locked') {
+            const doorWall = world.dungeon.doorWalls.get(doorId);
+            if (doorWall && circleVsWallSegment(proj.position, proj.radius, doorWall)) {
+              hitWall = true;
+              break;
+            }
+          }
+        }
+      }
+      if (hitWall) {
+        toRemove.push(proj.id);
+        continue;
+      }
     }
 
     let hit = false;
