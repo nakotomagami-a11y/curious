@@ -11,6 +11,7 @@ import type {
   Vec2,
   DungeonLayout,
   DungeonState,
+  WallSegment,
 } from '@curious/shared';
 import {
   vec2,
@@ -342,39 +343,13 @@ function resolveCollisions(world: SimWorld): void {
     entityMap.set(world.boss.id, { obj: { position: world.boss.position, radius: BOSS_RADIUS }, isStatic: bossStatic });
   }
 
-  // For each entity, check only nearby entities from the spatial grid
-  for (const [id, a] of entityMap) {
-    const nearbyIds = getNearbyEntities(collisionGrid, a.obj.position, COLLISION_SEARCH_RADIUS);
-    for (const nearId of nearbyIds) {
-      if (nearId <= id) continue; // Avoid duplicate pairs (string comparison)
-      const b = entityMap.get(nearId);
-      if (!b) continue;
-
-      const result = separateCircles(
-        { position: a.obj.position, radius: a.obj.radius },
-        { position: b.obj.position, radius: b.obj.radius }
-      );
-      if (result) {
-        if (a.isStatic && b.isStatic) continue;
-        if (a.isStatic) {
-          b.obj.position = vec2Add(b.obj.position, vec2Add(result.pushB, vec2Scale(result.pushA, -1)));
-        } else if (b.isStatic) {
-          a.obj.position = vec2Add(a.obj.position, vec2Add(result.pushA, vec2Scale(result.pushB, -1)));
-        } else {
-          a.obj.position = vec2Add(a.obj.position, result.pushA);
-          b.obj.position = vec2Add(b.obj.position, result.pushB);
-        }
-      }
-    }
-  }
-
-  // Wall collisions (dungeon mode)
+  // Build active wall list once (dungeon mode)
+  let activeWalls: WallSegment[] | null = null;
   if (world.dungeon) {
     if (!cachedWallGrid) {
       cachedWallGrid = createWallGrid(world.dungeon.walls);
     }
-    // Combine static walls with locked door walls
-    const activeWalls = [...world.dungeon.walls];
+    activeWalls = [...world.dungeon.walls];
     if (world.dungeonState) {
       for (const [doorId, doorState] of Object.entries(world.dungeonState.doorStates)) {
         if (doorState === 'locked') {
@@ -383,9 +358,44 @@ function resolveCollisions(world: SimWorld): void {
         }
       }
     }
+  }
 
-    for (const [id, entity] of entityMap) {
-      resolveEntityWallCollisions(entity.obj.position, entity.obj.radius, activeWalls);
+  // Run entity + wall collision in 2 passes so walls always win.
+  // Pass 1: entity separation may push into walls.
+  // Pass 2: wall correction, then entity re-separation respecting walls.
+  const passes = activeWalls ? 2 : 1;
+  for (let pass = 0; pass < passes; pass++) {
+    // Entity-entity separation
+    for (const [id, a] of entityMap) {
+      const nearbyIds = getNearbyEntities(collisionGrid, a.obj.position, COLLISION_SEARCH_RADIUS);
+      for (const nearId of nearbyIds) {
+        if (nearId <= id) continue;
+        const b = entityMap.get(nearId);
+        if (!b) continue;
+
+        const result = separateCircles(
+          { position: a.obj.position, radius: a.obj.radius },
+          { position: b.obj.position, radius: b.obj.radius }
+        );
+        if (result) {
+          if (a.isStatic && b.isStatic) continue;
+          if (a.isStatic) {
+            b.obj.position = vec2Add(b.obj.position, vec2Add(result.pushB, vec2Scale(result.pushA, -1)));
+          } else if (b.isStatic) {
+            a.obj.position = vec2Add(a.obj.position, vec2Add(result.pushA, vec2Scale(result.pushB, -1)));
+          } else {
+            a.obj.position = vec2Add(a.obj.position, result.pushA);
+            b.obj.position = vec2Add(b.obj.position, result.pushB);
+          }
+        }
+      }
+    }
+
+    // Wall collisions — walls always win (final authority)
+    if (activeWalls) {
+      for (const [, entity] of entityMap) {
+        resolveEntityWallCollisions(entity.obj.position, entity.obj.radius, activeWalls);
+      }
     }
   }
 }
