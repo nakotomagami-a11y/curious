@@ -1,10 +1,11 @@
 import type { GameEvent, Vec2, DungeonRoom, WallSegment } from '@curious/shared';
-import { vec2Distance, TILE_SIZE, DUNGEON_SPAWN_DISTANCE } from '@curious/shared';
+import { vec2Distance, TILE_SIZE, DUNGEON_SPAWN_DISTANCE, ENEMY_RADIUS } from '@curious/shared';
 import type { SimWorld } from '../simulation';
 import { generateEntityId } from '../simulation';
 import { createEnemy } from '../entities/enemy';
 import type { StatScale } from '../entities/enemy';
 import { createBoss } from '../entities/boss';
+import { circleVsWallSegment } from './wall-collision';
 import {
   DUNGEON_HEALTH_SCALE,
   DUNGEON_SPEED_SCALE,
@@ -163,12 +164,23 @@ function spawnRoomEnemies(room: DungeonRoom, world: SimWorld): string[] {
 
   // Spawn regular enemies
   const spawnCount = config.enemyCount;
-  const positions = getSpawnPositions(room, spawnCount, playerPos, tileSize);
+  let positions = getSpawnPositions(room, spawnCount, playerPos, tileSize);
+
+  // Validate spawn positions against walls — reject any that overlap a wall
+  if (world.dungeon) {
+    positions = positions.filter(pos => {
+      for (const wall of world.dungeon!.walls) {
+        if (circleVsWallSegment(pos, ENEMY_RADIUS + 5, wall)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }
 
   for (let i = 0; i < Math.min(spawnCount, positions.length); i++) {
     const enemyType = config.enemyTypes[i % config.enemyTypes.length];
-    const id = generateEntityId('de'); // dungeon enemy
-    // Use spawn position as leash origin (room.center can be outside L-shaped rooms)
+    const id = generateEntityId('de');
     const enemy = createEnemy(id, positions[i], positions[i], enemyType, statScale, []);
     world.enemies.set(id, enemy);
     ids.push(id);

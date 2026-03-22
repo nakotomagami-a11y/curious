@@ -122,6 +122,20 @@ export function tickWorld(world: SimWorld, dt: number): void {
   world.time += dt;
   world.events = [];
 
+  // Pre-build active wall list for knockback resolution during entity ticks
+  let activeWallsForKnockback: WallSegment[] | null = null;
+  if (world.dungeon) {
+    activeWallsForKnockback = [...world.dungeon.walls];
+    if (world.dungeonState) {
+      for (const [doorId, doorState] of Object.entries(world.dungeonState.doorStates)) {
+        if (doorState === 'locked') {
+          const doorWall = world.dungeon.doorWalls.get(doorId);
+          if (doorWall) activeWallsForKnockback.push(doorWall);
+        }
+      }
+    }
+  }
+
   // Tick all players
   for (const player of world.players.values()) {
     // Dev mode: keep resources maxed
@@ -135,6 +149,9 @@ export function tickWorld(world: SimWorld, dt: number): void {
     applyKnockback(player, dt);
     if (!world.dungeon) {
       clampPlayerToArena(player);
+    } else if (activeWallsForKnockback && player.state === 'alive') {
+      // Resolve wall collisions immediately after knockback
+      resolveEntityWallCollisions(player.position, PLAYER_RADIUS, activeWallsForKnockback);
     }
 
     // Tick buffs
@@ -189,6 +206,12 @@ export function tickWorld(world: SimWorld, dt: number): void {
     world.events.push(...aiEvents);
     tickEnemyTimers(enemy, dt);
     applyKnockbackEnemy(enemy, dt);
+
+    // Immediately resolve wall collisions after knockback to prevent
+    // enemies being pushed through walls by player attacks
+    if (activeWallsForKnockback && enemy.aiState !== 'dying' && enemy.aiState !== 'dead') {
+      resolveEntityWallCollisions(enemy.position, ENEMY_RADIUS, activeWallsForKnockback);
+    }
 
     // Tick enemy buffs
     if (enemy.aiState !== 'dying' && enemy.aiState !== 'dead') {
