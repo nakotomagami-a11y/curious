@@ -1,7 +1,7 @@
 // --- Dungeon Tile Grid ---
 export const TILE_SIZE = 100; // world units per tile
 export const CORRIDOR_WIDTH = 2; // tiles
-export const ROOM_GAP = 3; // min tile gap between rooms
+export const ROOM_GAP = 2; // min tile gap between rooms (must match CORRIDOR_WIDTH)
 export const DOOR_WIDTH = 80; // world units
 export const WALL_THICKNESS = 10; // world units (for rendering)
 export const WALL_HEIGHT = 150; // visual height (world units)

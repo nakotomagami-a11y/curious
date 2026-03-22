@@ -12,12 +12,12 @@ import {
 } from '@curious/shared';
 
 /**
- * Find which room the player is currently inside by checking worldBounds.
+ * Find which room the player is currently inside by checking actual tile membership.
+ * Uses tile coordinates for accuracy with L/T/cross-shaped rooms.
  */
 function findPlayerRoom(world: SimWorld): string | null {
   if (!world.dungeon) return null;
 
-  // Get first alive player
   let playerPos: Vec2 | null = null;
   for (const p of world.players.values()) {
     if (p.state === 'alive') {
@@ -27,15 +27,25 @@ function findPlayerRoom(world: SimWorld): string | null {
   }
   if (!playerPos) return null;
 
+  const tileSize = world.dungeon.tileSize;
+  const playerCol = Math.floor(playerPos.x / tileSize);
+  const playerRow = Math.floor(playerPos.z / tileSize);
+  const playerTile = `${playerCol},${playerRow}`;
+
   for (const [roomId, room] of world.dungeon.rooms) {
+    // First: quick bounding box rejection
     const b = room.worldBounds;
-    if (
-      playerPos.x >= b.minX &&
-      playerPos.x <= b.maxX &&
-      playerPos.z >= b.minZ &&
-      playerPos.z <= b.maxZ
-    ) {
-      return roomId;
+    if (playerPos.x < b.minX || playerPos.x > b.maxX || playerPos.z < b.minZ || playerPos.z > b.maxZ) {
+      continue;
+    }
+    // Then: precise tile membership check
+    for (const rect of room.tileRects) {
+      if (
+        playerCol >= rect.col && playerCol < rect.col + rect.width &&
+        playerRow >= rect.row && playerRow < rect.row + rect.height
+      ) {
+        return roomId;
+      }
     }
   }
 
@@ -61,16 +71,37 @@ function getSpawnPositions(
   playerPos: Vec2,
   tileSize: number,
 ): Vec2[] {
-  // Collect all tile positions within room
+  // Collect interior tile positions (skip edge tiles to avoid spawning near walls)
   const tileCenters: Vec2[] = [];
+  const tileSet = new Set<string>();
   for (const rect of room.tileRects) {
     for (let r = rect.row; r < rect.row + rect.height; r++) {
       for (let c = rect.col; c < rect.col + rect.width; c++) {
-        const pos = tileToWorld(c, r, tileSize);
-        if (vec2Distance(pos, playerPos) >= DUNGEON_SPAWN_DISTANCE) {
-          tileCenters.push(pos);
-        }
+        tileSet.add(`${c},${r}`);
       }
+    }
+  }
+
+  for (const key of tileSet) {
+    const [c, r] = key.split(',').map(Number);
+    // Only use interior tiles (all 4 neighbors are also room tiles)
+    const isInterior =
+      tileSet.has(`${c - 1},${r}`) && tileSet.has(`${c + 1},${r}`) &&
+      tileSet.has(`${c},${r - 1}`) && tileSet.has(`${c},${r + 1}`);
+    if (!isInterior) continue;
+
+    const pos = tileToWorld(c, r, tileSize);
+    if (vec2Distance(pos, playerPos) >= DUNGEON_SPAWN_DISTANCE) {
+      tileCenters.push(pos);
+    }
+  }
+
+  // Fallback: if no interior tiles found (small room), use all tiles
+  if (tileCenters.length === 0) {
+    for (const key of tileSet) {
+      const [c, r] = key.split(',').map(Number);
+      const pos = tileToWorld(c, r, tileSize);
+      tileCenters.push(pos);
     }
   }
 
@@ -117,7 +148,8 @@ function spawnRoomEnemies(room: DungeonRoom, world: SimWorld): string[] {
   for (let i = 0; i < Math.min(spawnCount, positions.length); i++) {
     const enemyType = config.enemyTypes[i % config.enemyTypes.length];
     const id = generateEntityId('de'); // dungeon enemy
-    const enemy = createEnemy(id, positions[i], room.center, enemyType, statScale, []);
+    // Use spawn position as leash origin (room.center can be outside L-shaped rooms)
+    const enemy = createEnemy(id, positions[i], positions[i], enemyType, statScale, []);
     world.enemies.set(id, enemy);
     ids.push(id);
 

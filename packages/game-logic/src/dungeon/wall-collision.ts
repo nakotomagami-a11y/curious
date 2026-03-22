@@ -52,6 +52,7 @@ export function circleVsWallSegment(
 
 /**
  * Resolve all wall collisions for a single entity.
+ * Runs multiple iterations to handle corners where two walls meet.
  * Mutates position in place.
  */
 export function resolveEntityWallCollisions(
@@ -61,13 +62,20 @@ export function resolveEntityWallCollisions(
   nearbyWallIndices?: number[],
 ): void {
   const indices = nearbyWallIndices ?? walls.map((_, i) => i);
-  for (const idx of indices) {
-    const wall = walls[idx];
-    if (!wall) continue;
-    const push = circleVsWallSegment(position, radius, wall);
-    if (push) {
-      position.x += push.x;
-      position.z += push.z;
+
+  // Multiple passes to resolve corner collisions properly
+  for (let pass = 0; pass < 3; pass++) {
+    let anyPush = false;
+    for (const idx of indices) {
+      const wall = walls[idx];
+      if (!wall) continue;
+      const push = circleVsWallSegment(position, radius, wall);
+      if (push) {
+        position.x += push.x;
+        position.z += push.z;
+        anyPush = true;
+      }
     }
+    if (!anyPush) break; // No collisions this pass, done
   }
 }
