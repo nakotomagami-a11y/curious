@@ -304,18 +304,15 @@ export function tickWorld(world: SimWorld, dt: number): void {
     }
   }
 
-  // Spawner — dev mode only; survival uses wave spawner
-  if (world.survival) {
+  // Spawner — dispatch based on game mode
+  if (world.dungeonState && world.dungeon) {
+    const dungeonEvents = tickDungeonSpawner(world, dt);
+    world.events.push(...dungeonEvents);
+  } else if (world.survival) {
     const survivalEvents = tickSurvival(world, dt);
     world.events.push(...survivalEvents);
   } else {
     tickSpawner(world, dt);
-  }
-
-  // Dungeon spawner
-  if (world.dungeonState && world.dungeon) {
-    const dungeonEvents = tickDungeonSpawner(world, dt);
-    world.events.push(...dungeonEvents);
   }
 
   // Resolve collisions
