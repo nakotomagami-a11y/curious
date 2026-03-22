@@ -6,6 +6,7 @@ import { createEnemy } from '../entities/enemy';
 import type { StatScale } from '../entities/enemy';
 import { createBoss } from '../entities/boss';
 import { circleVsWallSegment } from './wall-collision';
+import { resolveEntityWallCollisions } from './wall-collision';
 import {
   DUNGEON_HEALTH_SCALE,
   DUNGEON_SPEED_SCALE,
@@ -14,7 +15,6 @@ import {
 
 /**
  * Find which room the player is currently inside by checking actual tile membership.
- * Uses tile coordinates for accuracy with L/T/cross-shaped rooms.
  */
 function findPlayerRoom(world: SimWorld): string | null {
   if (!world.dungeon) return null;
@@ -31,15 +31,12 @@ function findPlayerRoom(world: SimWorld): string | null {
   const tileSize = world.dungeon.tileSize;
   const playerCol = Math.floor(playerPos.x / tileSize);
   const playerRow = Math.floor(playerPos.z / tileSize);
-  const playerTile = `${playerCol},${playerRow}`;
 
   for (const [roomId, room] of world.dungeon.rooms) {
-    // First: quick bounding box rejection
     const b = room.worldBounds;
     if (playerPos.x < b.minX || playerPos.x > b.maxX || playerPos.z < b.minZ || playerPos.z > b.maxZ) {
       continue;
     }
-    // Then: precise tile membership check
     for (const rect of room.tileRects) {
       if (
         playerCol >= rect.col && playerCol < rect.col + rect.width &&
@@ -53,27 +50,25 @@ function findPlayerRoom(world: SimWorld): string | null {
   return null;
 }
 
-/**
- * Convert a tile coordinate to world position (center of tile).
- */
 function tileToWorld(col: number, row: number, tileSize: number): Vec2 {
-  return {
-    x: col * tileSize + tileSize / 2,
-    z: row * tileSize + tileSize / 2,
-  };
+  return { x: col * tileSize + tileSize / 2, z: row * tileSize + tileSize / 2 };
 }
 
 /**
- * Get random spawn positions within a room, at least DUNGEON_SPAWN_DISTANCE from player.
+ * Get safe spawn positions inside a room. Uses a two-pass approach:
+ * 1. Collect tiles that are at least 2 tiles inward from any edge
+ * 2. Validate each position against actual wall geometry
  */
-function getSpawnPositions(
+function getSafeSpawnPositions(
   room: DungeonRoom,
   count: number,
   playerPos: Vec2,
-  tileSize: number,
+  world: SimWorld,
 ): Vec2[] {
-  // Collect interior tile positions (skip edge tiles to avoid spawning near walls)
-  const tileCenters: Vec2[] = [];
+  const tileSize = world.dungeon!.tileSize;
+  const walls = world.dungeon!.walls;
+
+  // Build tile set for this room
   const tileSet = new Set<string>();
   for (const rect of room.tileRects) {
     for (let r = rect.row; r < rect.row + rect.height; r++) {
@@ -83,57 +78,69 @@ function getSpawnPositions(
     }
   }
 
+  // Collect candidates: must have all 8 neighbors (including diagonals) in the room
+  const candidates: Vec2[] = [];
   for (const key of tileSet) {
     const [c, r] = key.split(',').map(Number);
-    // Only use interior tiles (all 4 neighbors are also room tiles)
-    const isInterior =
-      tileSet.has(`${c - 1},${r}`) && tileSet.has(`${c + 1},${r}`) &&
-      tileSet.has(`${c},${r - 1}`) && tileSet.has(`${c},${r + 1}`);
-    if (!isInterior) continue;
+    let allNeighbors = true;
+    for (let dc = -1; dc <= 1; dc++) {
+      for (let dr = -1; dr <= 1; dr++) {
+        if (dc === 0 && dr === 0) continue;
+        if (!tileSet.has(`${c + dc},${r + dr}`)) {
+          allNeighbors = false;
+          break;
+        }
+      }
+      if (!allNeighbors) break;
+    }
+    if (!allNeighbors) continue;
 
     const pos = tileToWorld(c, r, tileSize);
-    if (vec2Distance(pos, playerPos) >= DUNGEON_SPAWN_DISTANCE) {
-      tileCenters.push(pos);
-    }
-  }
 
-  // Fallback: if no interior tiles with distance, relax the distance constraint
-  if (tileCenters.length === 0) {
-    for (const key of tileSet) {
-      const [c, r] = key.split(',').map(Number);
-      const isInterior =
-        tileSet.has(`${c - 1},${r}`) && tileSet.has(`${c + 1},${r}`) &&
-        tileSet.has(`${c},${r - 1}`) && tileSet.has(`${c},${r + 1}`);
-      if (!isInterior) continue;
-      tileCenters.push(tileToWorld(c, r, tileSize));
-    }
-  }
-
-  // Last resort: use edge tiles but offset inward (avoid wall overlap)
-  if (tileCenters.length === 0) {
-    for (const key of tileSet) {
-      const [c, r] = key.split(',').map(Number);
-      const pos = tileToWorld(c, r, tileSize);
-      // Push position toward room center to avoid wall overlap
-      const toCenterX = room.center.x - pos.x;
-      const toCenterZ = room.center.z - pos.z;
-      const d = Math.sqrt(toCenterX * toCenterX + toCenterZ * toCenterZ);
-      if (d > 1) {
-        pos.x += (toCenterX / d) * 35; // push 35 units inward (enemy radius + margin)
-        pos.z += (toCenterZ / d) * 35;
+    // Verify no wall collision at this position
+    let touchesWall = false;
+    for (const wall of walls) {
+      if (circleVsWallSegment(pos, ENEMY_RADIUS + 10, wall)) {
+        touchesWall = true;
+        break;
       }
-      tileCenters.push(pos);
+    }
+    if (touchesWall) continue;
+
+    candidates.push(pos);
+  }
+
+  // Sort: prefer positions far from player first
+  candidates.sort((a, b) => vec2Distance(b, playerPos) - vec2Distance(a, playerPos));
+
+  // If we have enough candidates, use them
+  if (candidates.length >= count) {
+    return candidates.slice(0, count);
+  }
+
+  // Fallback: use room center repeated (collision will push them apart)
+  const result = [...candidates];
+  while (result.length < count) {
+    const offset = {
+      x: room.center.x + (Math.random() - 0.5) * 60,
+      z: room.center.z + (Math.random() - 0.5) * 60,
+    };
+    // Validate against walls
+    let ok = true;
+    for (const wall of walls) {
+      if (circleVsWallSegment(offset, ENEMY_RADIUS + 10, wall)) {
+        ok = false;
+        break;
+      }
+    }
+    if (ok) {
+      result.push(offset);
+    } else {
+      // Just use center — wall collision will fix it
+      result.push({ ...room.center });
     }
   }
-
-  // Shuffle and pick
-  for (let i = tileCenters.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [tileCenters[i], tileCenters[j]] = [tileCenters[j], tileCenters[i]];
-  }
-
-  // If not enough far-away tiles, use what we have
-  return tileCenters.slice(0, count);
+  return result;
 }
 
 /**
@@ -145,7 +152,6 @@ function spawnRoomEnemies(room: DungeonRoom, world: SimWorld): string[] {
   const config = room.enemyConfig;
   const ids: string[] = [];
 
-  // Get player position
   let playerPos: Vec2 = room.center;
   for (const p of world.players.values()) {
     if (p.state === 'alive') {
@@ -154,7 +160,6 @@ function spawnRoomEnemies(room: DungeonRoom, world: SimWorld): string[] {
     }
   }
 
-  const tileSize = world.dungeon.tileSize;
   const depth = room.depth;
   const statScale: StatScale = {
     healthMult: 1 + depth * DUNGEON_HEALTH_SCALE,
@@ -162,26 +167,19 @@ function spawnRoomEnemies(room: DungeonRoom, world: SimWorld): string[] {
     damageMult: 1 + depth * DUNGEON_DAMAGE_SCALE,
   };
 
-  // Spawn regular enemies
   const spawnCount = config.enemyCount;
-  let positions = getSpawnPositions(room, spawnCount, playerPos, tileSize);
-
-  // Validate spawn positions against walls — reject any that overlap a wall
-  if (world.dungeon) {
-    positions = positions.filter(pos => {
-      for (const wall of world.dungeon!.walls) {
-        if (circleVsWallSegment(pos, ENEMY_RADIUS + 5, wall)) {
-          return false;
-        }
-      }
-      return true;
-    });
-  }
+  const positions = getSafeSpawnPositions(room, spawnCount, playerPos, world);
 
   for (let i = 0; i < Math.min(spawnCount, positions.length); i++) {
     const enemyType = config.enemyTypes[i % config.enemyTypes.length];
     const id = generateEntityId('de');
     const enemy = createEnemy(id, positions[i], positions[i], enemyType, statScale, []);
+
+    // Force wall collision on spawn to ensure enemy is inside room
+    if (world.dungeon) {
+      resolveEntityWallCollisions(enemy.position, ENEMY_RADIUS, world.dungeon.walls);
+    }
+
     world.enemies.set(id, enemy);
     ids.push(id);
 
@@ -195,7 +193,7 @@ function spawnRoomEnemies(room: DungeonRoom, world: SimWorld): string[] {
 
   // Spawn boss if boss room
   if (config.isBossRoom && config.bossType) {
-    const bossId = generateEntityId('db'); // dungeon boss
+    const bossId = generateEntityId('db');
     const boss = createBoss(bossId, room.center, config.bossType);
     world.boss = boss;
     ids.push(bossId);
@@ -221,7 +219,6 @@ export function tickDungeonSpawner(world: SimWorld, dt: number): GameEvent[] {
   const state = world.dungeonState;
   const layout = world.dungeon;
 
-  // Find which room the player is in
   const currentRoomId = findPlayerRoom(world);
   if (!currentRoomId) return events;
 
@@ -232,7 +229,6 @@ export function tickDungeonSpawner(world: SimWorld, dt: number): GameEvent[] {
 
   // Player entered an undiscovered room
   if (roomState === 'undiscovered') {
-    // Set room to active
     state.roomStates[currentRoomId] = 'active';
     state.currentRoomId = currentRoomId;
 
@@ -257,7 +253,6 @@ export function tickDungeonSpawner(world: SimWorld, dt: number): GameEvent[] {
         allDead = false;
         break;
       }
-      // Also check if it's the boss
       if (world.boss && world.boss.id === enemyId) {
         if (world.boss.aiState !== 'dead' && world.boss.aiState !== 'dying') {
           allDead = false;
@@ -267,10 +262,8 @@ export function tickDungeonSpawner(world: SimWorld, dt: number): GameEvent[] {
     }
 
     if (allDead && state.activeRoomEnemyIds.length > 0) {
-      // Room cleared
       state.roomStates[currentRoomId] = 'cleared';
 
-      // Unlock and open all doors of this room
       for (const doorId of room.doorIds) {
         state.doorStates[doorId] = 'open';
       }
@@ -280,7 +273,6 @@ export function tickDungeonSpawner(world: SimWorld, dt: number): GameEvent[] {
 
       events.push({ type: 'ROOM_CLEARED', roomId: currentRoomId });
 
-      // Check if boss room was cleared
       if (room.enemyConfig?.isBossRoom) {
         state.complete = true;
         events.push({ type: 'DUNGEON_COMPLETE' });
