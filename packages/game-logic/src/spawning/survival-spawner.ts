@@ -10,6 +10,11 @@ import {
   WAVE_DAMAGE_SCALE,
   DASHER_SPAWN_CHANCE,
   CASTER_SPAWN_CHANCE,
+  SHIELDER_SPAWN_CHANCE,
+  SUMMONER_SPAWN_CHANCE,
+  BOMBER_SPAWN_CHANCE,
+  TELEPORTER_SPAWN_CHANCE,
+  HEALER_SPAWN_CHANCE,
   ARENA_HALF_WIDTH,
   ARENA_HALF_HEIGHT,
 } from '@curious/shared';
@@ -44,8 +49,14 @@ function findSpawnPosition(world: SimWorld): Vec2 {
 
 function rollEnemyType(): EnemyType {
   const roll = Math.random();
-  if (roll < DASHER_SPAWN_CHANCE) return 'dasher';
-  if (roll < DASHER_SPAWN_CHANCE + CASTER_SPAWN_CHANCE) return 'caster';
+  let cumulative = 0;
+  cumulative += DASHER_SPAWN_CHANCE;    if (roll < cumulative) return 'dasher';
+  cumulative += CASTER_SPAWN_CHANCE;    if (roll < cumulative) return 'caster';
+  cumulative += SHIELDER_SPAWN_CHANCE;  if (roll < cumulative) return 'shielder';
+  cumulative += SUMMONER_SPAWN_CHANCE;  if (roll < cumulative) return 'summoner';
+  cumulative += BOMBER_SPAWN_CHANCE;    if (roll < cumulative) return 'bomber';
+  cumulative += TELEPORTER_SPAWN_CHANCE; if (roll < cumulative) return 'teleporter';
+  cumulative += HEALER_SPAWN_CHANCE;    if (roll < cumulative) return 'healer';
   return 'melee';
 }
 

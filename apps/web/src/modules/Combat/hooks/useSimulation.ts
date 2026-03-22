@@ -32,7 +32,7 @@ import {
 import { vec2Length, vec2Sub, vec2Angle, vec2Normalize, randomizeDamage } from '@curious/shared';
 import { isKeyDown } from '@/input/keyboard';
 import { getSimWorld } from '@modules/Combat/hooks/world-manager';
-import { initAudio, applyVolumeSettings } from '@modules/Audio/audio-engine';
+import { initAudio, applyVolumeSettings, startMusic, stopMusic, setMusicVolume } from '@modules/Audio/audio-engine';
 import { processAudioEvents } from '@modules/Audio/game-audio';
 import { useAchievementStore } from '@lib/stores/achievement-store';
 import { useSettingsStore } from '@lib/stores/settings-store';
@@ -49,6 +49,7 @@ export function useSimulation() {
   const escWasDown = useRef(false);
   // Achievement check throttle (~1 second at 60fps)
   const achievementCheckCounter = useRef(0);
+  const musicStarted = useRef(false);
 
   useFrame((_, delta) => {
     // Toggle settings on Escape key edge
@@ -58,7 +59,19 @@ export function useSimulation() {
     }
     escWasDown.current = escPressed;
 
-    if (scene !== 'combat') return;
+    if (scene !== 'combat') {
+      if (musicStarted.current) {
+        stopMusic();
+        musicStarted.current = false;
+      }
+      return;
+    }
+
+    // Start battle music when entering combat
+    if (!musicStarted.current) {
+      startMusic();
+      musicStarted.current = true;
+    }
 
     // Hitstop micro-freeze: pause simulation briefly on hit
     const hitstop = useGameStore.getState().hitstopTimer;
@@ -70,6 +83,7 @@ export function useSimulation() {
     // Apply audio settings every frame (negligible cost — single property set)
     const settings = useSettingsStore.getState();
     applyVolumeSettings(settings.masterVolume, settings.muted);
+    setMusicVolume(settings.muted ? 0 : settings.musicVolume);
 
     const world = getSimWorld();
     const dt = Math.min(delta, 0.05);
