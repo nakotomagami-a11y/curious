@@ -1,4 +1,4 @@
-# Curious — Combat Sandbox
+# Curious — Combat Sandbox [ DB DISCONNECTED ]
 
 A top-down multiplayer browser combat arena built with Three.js and React. Fight waves of enemies, collect spell drops, defeat bosses, and climb the leaderboard.
 
